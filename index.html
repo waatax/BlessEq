@@ -363,37 +363,40 @@
       </div>
       <div class="modal-body">
 
-        <!-- Tab navigation inside toolkit -->
+        <!-- Tab navigation inside toolkit (V4: Blessed Church Full Toolkit) -->
         <div class="toolkit-tabs" role="tablist" aria-label="工具箱功能標籤">
           <button class="tab-btn active" id="toolTabTestimony" type="button" role="tab" aria-selected="true" aria-controls="testimonyToolContent">
             <i class="fa-solid fa-pen-nib" aria-hidden="true"></i> 3-5分鐘動人見證產生器
           </button>
           <button class="tab-btn" id="toolTabBest" type="button" role="tab" aria-selected="false" aria-controls="bestToolContent">
-            <i class="fa-solid fa-user-plus" aria-hidden="true"></i> BEST 邀約與受洗引導檢核
+            <i class="fa-solid fa-user-check" aria-hidden="true"></i> BEST 邀約與受洗引導檢核板
+          </button>
+          <button class="tab-btn" id="toolTab8Weeks" type="button" role="tab" aria-selected="false" aria-controls="eightWeeksToolContent">
+            <i class="fa-solid fa-calendar-week" aria-hidden="true"></i> 幸福小組八週策略心法
           </button>
         </div>
 
-        <!-- Testimony Generator Tab Content -->
+        <!-- Tab 1: Testimony Generator Tab Content -->
         <div id="testimonyToolContent" role="tabpanel" aria-labelledby="toolTabTestimony" class="tool-tab-panel">
           <div class="toolkit-tip-box">
             <strong><i class="fa-solid fa-lightbulb text-gold" aria-hidden="true"></i> 實作秘笈一重點心法：</strong>
-            見證有目的性，不是隨意聊天。掌握「信主前（1分鐘）→ 轉折點（1分鐘）→ 信主後（1.5分鐘）」黃金架構，真實分享上帝奇妙作為！
+            見證有目的性，不是隨意聊天。掌握「信主前（1分鐘）→ 轉折點（1分鐘）→ 信主後（1.5分鐘）」黃金架構，真實分享上帝奇妙作為！家常小菜勝過滿漢全席！
           </div>
 
           <div class="form-group">
-            <label for="testimonyBefore" class="form-label">1. 信主前的光景（困境、空虛、軟弱或盲點）：</label>
+            <label for="testimonyBefore" class="form-label">1. 信主前的光景（困境、空虛、軟弱或盲點，約 1 分鐘）：</label>
             <textarea id="testimonyBefore" rows="2" class="form-textarea"
                       placeholder="例如：過去的我總是依賴自己的能力，遇到挫折時內心充滿焦慮與不安全感..."></textarea>
           </div>
 
           <div class="form-group">
-            <label for="testimonyTurning" class="form-label">2. 遇見主的契機與轉折（誰邀請、哪一句話、哪次禱告打動了你）：</label>
+            <label for="testimonyTurning" class="form-label">2. 遇見主的契機與轉折（誰邀請、哪一句話、哪次禱告打動了你，約 1 分鐘）：</label>
             <textarea id="testimonyTurning" rows="2" class="form-textarea"
                       placeholder="例如：透過朋友的真誠邀請參加幸福小組，在小組敬拜時感受到前所未有的平安與無條件的愛..."></textarea>
           </div>
 
           <div class="form-group">
-            <label for="testimonyAfter" class="form-label">3. 信主後的翻轉與生命的改變（真實經歷上帝的恩典與現在的平安）：</label>
+            <label for="testimonyAfter" class="form-label">3. 信主後的翻轉與改變（真實經歷上帝的恩典與現在的平安，約 1.5 分鐘）：</label>
             <textarea id="testimonyAfter" rows="2" class="form-textarea"
                       placeholder="例如：如今當我面對挑戰，我知道有天父作我的靠山，家庭關係被修復，生命充滿盼望！"></textarea>
           </div>
@@ -406,40 +409,158 @@
           </div>
         </div>
 
-        <!-- BEST Inviting & Baptism Guidance Tab Content -->
+        <!-- Tab 2: BEST Inviting & Baptism Guidance Interactive Checklist -->
         <div id="bestToolContent" role="tabpanel" aria-labelledby="toolTabBest" class="tool-tab-panel" hidden>
           <div class="toolkit-tip-box toolkit-tip-box--crimson">
             <strong><i class="fa-solid fa-bullseye text-gold" aria-hidden="true"></i> 實作秘笈二至四精髓：</strong>
-            邀約 BEST 要刻意營造尊榮感，引導受洗要「用諸般的智慧」，及早鋪陳洗禮見證，為其掃除心中疑慮！
+            邀約 BEST 要刻意營造尊榮感（視 BEST 為上帝的心上人），引導受洗要「用諸般的智慧」，及早鋪陳洗禮見證，為其掃除心中疑慮！
           </div>
 
           <div class="best-tools-grid">
             <div class="best-tool-card">
               <strong class="best-tool-title text-gold">
-                <i class="fa-solid fa-check-double" aria-hidden="true"></i> 邀約 BEST 六大檢核：
+                <i class="fa-solid fa-check-double" aria-hidden="true"></i> 邀約 BEST 六大檢核（可互動勾選記億）：
               </strong>
-              <ul class="best-tool-list">
-                <li>建立平時的真實關懷與友誼</li>
-                <li>為對象進行連續性禱告守望</li>
-                <li>熱情、肯定、不給壓力的邀約口吻</li>
-                <li>提前告知聚會時間、地點與接送</li>
-                <li>小組同工全員動員分工接待</li>
-                <li>預備精緻小禮物與尊榮感受</li>
+              <ul class="best-interactive-checklist" id="bestInviteChecklist">
+                <li class="best-check-item">
+                  <input type="checkbox" id="chk-best-1" data-key="best_chk_1">
+                  <label for="chk-best-1">建立平時的真實關懷與友誼（沒關係就有關係）</label>
+                </li>
+                <li class="best-check-item">
+                  <input type="checkbox" id="chk-best-2" data-key="best_chk_2">
+                  <label for="chk-best-2">連續性為 BEST 禱告守望，進行屬靈爭戰</label>
+                </li>
+                <li class="best-check-item">
+                  <input type="checkbox" id="chk-best-3" data-key="best_chk_3">
+                  <label for="chk-best-3">熱情、肯定、不給壓力的邀約口吻</label>
+                </li>
+                <li class="best-check-item">
+                  <input type="checkbox" id="chk-best-4" data-key="best_chk_4">
+                  <label for="chk-best-4">提前確認聚會時間、地點與同工專車接送</label>
+                </li>
+                <li class="best-check-item">
+                  <input type="checkbox" id="chk-best-5" data-key="best_chk_5">
+                  <label for="chk-best-5">小組同工全員動員分工（熱情破冰、溫暖敬拜）</label>
+                </li>
+                <li class="best-check-item">
+                  <input type="checkbox" id="chk-best-6" data-key="best_chk_6">
+                  <label for="chk-best-6">預備精緻小禮物，刻意營造尊榮與賓至如歸感</label>
+                </li>
               </ul>
             </div>
 
             <div class="best-tool-card">
               <strong class="best-tool-title text-crimson">
-                <i class="fa-solid fa-water" aria-hidden="true"></i> 引導受洗關鍵心法：
+                <i class="fa-solid fa-water" aria-hidden="true"></i> 引導受洗關鍵心法（可互動勾選）：
               </strong>
-              <ul class="best-tool-list">
-                <li>釐清受洗不是加入俱樂部，而是領受天國名份</li>
-                <li>解答傳統祭祖與孝道顧慮（敬祖不拜偶像）</li>
-                <li>一對一陪伴閱讀《如何受洗》講義</li>
-                <li>真誠為其心中的攔阻迫切禱告爭戰</li>
-                <li>以愛化解家人或長輩的擔憂</li>
-                <li>歡喜慶祝屬天重生的神聖時刻</li>
+              <ul class="best-interactive-checklist" id="bestBaptismChecklist">
+                <li class="best-check-item">
+                  <input type="checkbox" id="chk-bap-1" data-key="bap_chk_1">
+                  <label for="chk-bap-1">釐清受洗不是加入社團，而是領受天國國籍名份</label>
+                </li>
+                <li class="best-check-item">
+                  <input type="checkbox" id="chk-bap-2" data-key="bap_chk_2">
+                  <label for="chk-bap-2">解答傳統祭祖與孝道顧慮（基督徒敬祖不拜偶像）</label>
+                </li>
+                <li class="best-check-item">
+                  <input type="checkbox" id="chk-bap-3" data-key="bap_chk_3">
+                  <label for="chk-bap-3">一對一陪伴閱讀《如何受洗》實作講義</label>
+                </li>
+                <li class="best-check-item">
+                  <input type="checkbox" id="chk-bap-4" data-key="bap_chk_4">
+                  <label for="chk-bap-4">真誠為其心中的攔阻迫切禱告，攻破堅固營壘</label>
+                </li>
+                <li class="best-check-item">
+                  <input type="checkbox" id="chk-bap-5" data-key="bap_chk_5">
+                  <label for="chk-bap-5">以愛化解家人或長輩的擔憂，作孝順感恩的兒女</label>
+                </li>
+                <li class="best-check-item">
+                  <input type="checkbox" id="chk-bap-6" data-key="bap_chk_6">
+                  <label for="chk-bap-6">歡喜慶祝屬天重生，預備洗禮見證與慶典禮物</label>
+                </li>
               </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Eight Weeks Strategy Matrix (V4 Blessed Church Authentic Roadmap) -->
+        <div id="eightWeeksToolContent" role="tabpanel" aria-labelledby="toolTab8Weeks" class="tool-tab-panel" hidden>
+          <div class="toolkit-tip-box">
+            <strong><i class="fa-solid fa-compass text-gold" aria-hidden="true"></i> 福氣教會八週幸福小組推進節奏：</strong>
+            帶狀佈道策略在於「累積感動」，從認識朋友、感受無條件的愛，層層推進至十字架救恩與歡慶受洗！
+          </div>
+
+          <div class="eight-weeks-grid">
+            <div class="week-card">
+              <div class="week-card-header">
+                <span class="week-badge">WEEK 01</span>
+                <span class="week-focus">破冰與信任</span>
+              </div>
+              <div class="week-title">真幸福</div>
+              <div class="week-desc">打破隔閡，營造像「家」一樣的溫暖氛圍，讓 BEST 感受到被接納與尊重。</div>
+            </div>
+
+            <div class="week-card">
+              <div class="week-card-header">
+                <span class="week-badge">WEEK 02</span>
+                <span class="week-focus">世界的虛妄</span>
+              </div>
+              <div class="week-title">真相大白</div>
+              <div class="week-desc">看清世界價值觀的盲點與人內心的空虛，點出唯有上帝能填補靈魂深處的缺口。</div>
+            </div>
+
+            <div class="week-card">
+              <div class="week-card-header">
+                <span class="week-badge">WEEK 03</span>
+                <span class="week-focus">救主降生</span>
+              </div>
+              <div class="week-title">萬世巨星</div>
+              <div class="week-desc">介紹耶穌基督降生受死的大愛，分享基督為我們犧牲的真實救恩。</div>
+            </div>
+
+            <div class="week-card" style="border-color:var(--gold-border);background:var(--gold-light);">
+              <div class="week-card-header">
+                <span class="week-badge" style="background:var(--gold-primary);color:#fff;">WEEK 04 · 特別活動</span>
+                <span class="week-focus">精心時刻</span>
+              </div>
+              <div class="week-title">幸福連線</div>
+              <div class="week-desc">舉辦精心策劃的戶外或聚餐活動，預備尊榮小禮物，大幅累積感動！</div>
+            </div>
+
+            <div class="week-card">
+              <div class="week-card-header">
+                <span class="week-badge">WEEK 05</span>
+                <span class="week-focus">打開心門</span>
+              </div>
+              <div class="week-title">當上帝來敲門</div>
+              <div class="week-desc">引導 BEST 開啟心門與神連線，經歷禱告蒙應允的神蹟與天父無條件的接納。</div>
+            </div>
+
+            <div class="week-card" style="border-color:var(--crimson-border);background:var(--crimson-light);">
+              <div class="week-card-header">
+                <span class="week-badge" style="background:var(--crimson-primary);color:#fff;">WEEK 06 · 決志黃金週</span>
+                <span class="week-focus">十字架大能</span>
+              </div>
+              <div class="week-title">十字架的勝利</div>
+              <div class="week-desc">分享十字架救恩的大能，攻心為上！真誠呼召 BEST 作決志禱告信靠耶穌。</div>
+            </div>
+
+            <div class="week-card">
+              <div class="week-card-header">
+                <span class="week-badge">WEEK 07</span>
+                <span class="week-focus">破除捆綁</span>
+              </div>
+              <div class="week-title">釋放與自由</div>
+              <div class="week-desc">破除家族咒詛與內心恐懼，一對一陪伴解決洗禮疑難，為受洗掃清障礙。</div>
+            </div>
+
+            <div class="week-card" style="border-color:var(--olive-primary);background:var(--olive-light);">
+              <div class="week-card-header">
+                <span class="week-badge" style="background:var(--olive-primary);color:#fff;">WEEK 08 · 圓滿慶祝</span>
+                <span class="week-focus">歡慶受洗</span>
+              </div>
+              <div class="week-title">幸福的教會</div>
+              <div class="week-desc">見證受洗重生的神聖榮耀，全組歡喜慶祝，無縫融入教會大家庭持續門訓！</div>
             </div>
           </div>
         </div>
@@ -466,9 +587,22 @@
     </div>
   </footer>
 
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('./sw.js').then(function(registration) {
+          console.log('[PWA] ServiceWorker registered with scope: ', registration.scope);
+        }, function(err) {
+          console.warn('[PWA] ServiceWorker registration failed: ', err);
+        });
+      });
+    }
+  </script>
+
   <!-- Curriculum Database Script (Window.BLESS_EQ_DATA) -->
   <script src="js/data.js"></script>
-  <!-- Application Core Controller Logic V2 -->
+  <!-- Application Core Controller Logic V4 -->
   <script src="js/app.js"></script>
 </body>
 </html>

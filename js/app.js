@@ -124,8 +124,10 @@
     closeToolkitModalBtn: $('closeToolkitModalBtn'),
     toolTabTestimony: $('toolTabTestimony'),
     toolTabBest: $('toolTabBest'),
+    toolTab8Weeks: $('toolTab8Weeks'),
     testimonyToolContent: $('testimonyToolContent'),
     bestToolContent: $('bestToolContent'),
+    eightWeeksToolContent: $('eightWeeksToolContent'),
     testimonyBefore: $('testimonyBefore'),
     testimonyTurning: $('testimonyTurning'),
     testimonyAfter: $('testimonyAfter'),
@@ -146,6 +148,7 @@
     applyTheme(false);
     applyFontScale(false);
     bindEvents();
+    initInteractiveChecklists();
     renderLessonList();
     routeFromHash();
     window.addEventListener('hashchange', routeFromHash);
@@ -1145,6 +1148,26 @@
   }
 
   // ─────────────────────────────────────────────
+  //  INTERACTIVE BEST CHECKLIST (V4)
+  // ─────────────────────────────────────────────
+  function initInteractiveChecklists() {
+    document.querySelectorAll('.best-check-item input[type="checkbox"]').forEach(chk => {
+      const key = `blesseq_chk_${chk.id}`;
+      const saved = safeStorage('get', key);
+      if (saved === 'true') {
+        chk.checked = true;
+        const item = chk.closest('.best-check-item');
+        if (item) item.classList.add('completed');
+      }
+      chk.addEventListener('change', () => {
+        safeStorage('set', key, chk.checked ? 'true' : 'false');
+        const item = chk.closest('.best-check-item');
+        if (item) item.classList.toggle('completed', chk.checked);
+      });
+    });
+  }
+
+  // ─────────────────────────────────────────────
   //  SAFE LOCALSTORAGE (P0-7)
   // ─────────────────────────────────────────────
   function safeStorage(action, key, value) {
@@ -1302,23 +1325,28 @@
     DOM.closeToolkitModalBtn.addEventListener('click', closeToolkit);
     DOM.toolkitModal.addEventListener('click', e => { if (e.target === DOM.toolkitModal) closeToolkit(); });
 
-    // Toolkit Tabs (P2-2: ARIA tabs)
-    DOM.toolTabTestimony.addEventListener('click', () => {
-      DOM.toolTabTestimony.classList.add('active');
-      DOM.toolTabTestimony.setAttribute('aria-selected', 'true');
-      DOM.toolTabBest.classList.remove('active');
-      DOM.toolTabBest.setAttribute('aria-selected', 'false');
-      DOM.testimonyToolContent.hidden = false;
-      DOM.bestToolContent.hidden = true;
-    });
-    DOM.toolTabBest.addEventListener('click', () => {
-      DOM.toolTabBest.classList.add('active');
-      DOM.toolTabBest.setAttribute('aria-selected', 'true');
-      DOM.toolTabTestimony.classList.remove('active');
-      DOM.toolTabTestimony.setAttribute('aria-selected', 'false');
-      DOM.bestToolContent.hidden = false;
-      DOM.testimonyToolContent.hidden = true;
-    });
+    // Toolkit Tabs (V4: 3-Tab Blessed Church Toolkit)
+    function switchToolkitTab(tab) {
+      const tabs = [
+        { btn: DOM.toolTabTestimony, panel: DOM.testimonyToolContent, id: 'testimony' },
+        { btn: DOM.toolTabBest, panel: DOM.bestToolContent, id: 'best' },
+        { btn: DOM.toolTab8Weeks, panel: DOM.eightWeeksToolContent, id: '8weeks' }
+      ];
+      tabs.forEach(t => {
+        if (t.btn && t.panel) {
+          const isActive = t.id === tab;
+          t.btn.classList.toggle('active', isActive);
+          t.btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+          t.panel.hidden = !isActive;
+        }
+      });
+    }
+
+    DOM.toolTabTestimony.addEventListener('click', () => switchToolkitTab('testimony'));
+    DOM.toolTabBest.addEventListener('click', () => switchToolkitTab('best'));
+    if (DOM.toolTab8Weeks) {
+      DOM.toolTab8Weeks.addEventListener('click', () => switchToolkitTab('8weeks'));
+    }
 
     // Copy Testimony (P0-7 safe clipboard)
     DOM.copyTestimonyBtn.addEventListener('click', () => {
