@@ -12,3 +12,11 @@ Thumbs.db
 
 # Gemini assistant metadata
 .gemini/
+
+# Raw PowerPoint Presentations (local-only source material)
+PPTX/
+*.ppt
+*.pptx
+
+# Node modules
+node_modules/

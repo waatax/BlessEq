@@ -1,0 +1,22 @@
+{
+  "name": "BlessEq 幸福門訓裝備系統",
+  "short_name": "BlessEq",
+  "description": "幸福門訓門徒學校(下)全套 17 門裝備課程 · 443 張高畫質投影片 · Biblia 聖言研讀系統",
+  "start_url": "/BlessEq/",
+  "display": "standalone",
+  "background_color": "#F9F7F2",
+  "theme_color": "#C59325",
+  "lang": "zh-TW",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

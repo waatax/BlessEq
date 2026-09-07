@@ -1,181 +1,235 @@
 /**
- * BlessEq - Application Core Controller
- * Handles curriculum navigation, dual-pane synchronization,
- * presenter mode, interactive fill-in-the-blanks, search, audio narration, and themes.
+ * BlessEq V2 - Application Core Controller
+ * Handles: curriculum navigation, URL routing, slide transitions,
+ * Biblia 3-theme engine, data-driven fill-in-blanks (all 17 lessons),
+ * touch swipe, presenter mode with timer, chunked audio narration,
+ * voices change listener, real-time search (Regex-safe), ARIA management,
+ * focus trap in modals, personal notes autosave, progress tracking,
+ * slide preload, grid gallery, lecturer sync scroll.
  */
 
-(function() {
+(function () {
   'use strict';
 
-  // --- State ---
+  // ─────────────────────────────────────────────
+  //  STATE
+  // ─────────────────────────────────────────────
+  const THEMES = ['light', 'sepia', 'dark'];
+  const THEME_ICONS = { light: 'fa-sun', sepia: 'fa-cloud-sun', dark: 'fa-moon' };
+  const FONT_SCALES = [1.0, 1.15, 1.3];
+
   const state = {
     lessons: [],
     activeLessonId: '00',
     activeSlideIndex: 1,
     activeCategory: 'all',
     isMasked: false,
-    theme: localStorage.getItem('blesseq_theme') || 'light',
-    fontScale: parseFloat(localStorage.getItem('blesseq_font_scale') || '1.0'),
+    themeIndex: THEMES.indexOf(localStorage.getItem('blesseq_theme') || 'light'),
+    fontScaleIndex: parseInt(localStorage.getItem('blesseq_font_scale_idx') || '0', 10),
     isPresenterOpen: false,
-    revealedBlanks: new Set(),
-    synthUtterance: null,
+    isGridOpen: false,
+    isNotesOpen: false,
+    synthChunks: [],
+    synthChunkIdx: 0,
     isSpeaking: false,
-    playbackRate: 1.0
+    playbackRate: 1.0,
+    timerRunning: false,
+    timerSeconds: 0,
+    timerInterval: null,
+    speechKeepAliveInterval: null,
+    progress: JSON.parse(localStorage.getItem('blesseq_progress') || '{}'),
+    routeInitialized: false,
   };
 
-  // --- DOM Elements ---
+  // ─────────────────────────────────────────────
+  //  SAFE DOM QUERY
+  // ─────────────────────────────────────────────
+  function $(id) { return document.getElementById(id); }
+
   const DOM = {
-    // Theme & Root
     html: document.documentElement,
-    themeToggleBtn: document.getElementById('themeToggleBtn'),
-    themeIcon: document.getElementById('themeIcon'),
-    fontScaleBtn: document.getElementById('fontScaleBtn'),
-    brandHomeBtn: document.getElementById('brandHomeBtn'),
+    themeToggleBtn: $('themeToggleBtn'),
+    themeIcon: $('themeIcon'),
+    fontScaleBtn: $('fontScaleBtn'),
+    brandHomeBtn: $('brandHomeBtn'),
 
-    // Category Tabs & Sidebar
     categoryTabs: document.querySelectorAll('.tab-btn[data-filter]'),
-    lessonsContainer: document.getElementById('lessonsContainer'),
-    lessonCountBadge: document.getElementById('lessonCountBadge'),
+    lessonsContainer: $('lessonsContainer'),
+    lessonCountBadge: $('lessonCountBadge'),
 
-    // Lesson Banner
-    bannerCategory: document.getElementById('bannerCategory'),
-    bannerTitle: document.getElementById('bannerTitle'),
-    bannerSubtitle: document.getElementById('bannerSubtitle'),
-    btnPrevLesson: document.getElementById('btnPrevLesson'),
-    btnNextLesson: document.getElementById('btnNextLesson'),
+    bannerCategory: $('bannerCategory'),
+    bannerTitle: $('bannerTitle'),
+    bannerSubtitle: $('bannerSubtitle'),
+    btnPrevLesson: $('btnPrevLesson'),
+    btnNextLesson: $('btnNextLesson'),
 
-    // Audio Narrator
-    audioNarrateBtn: document.getElementById('audioNarrateBtn'),
-    audioIcon: document.getElementById('audioIcon'),
-    audioStatusText: document.getElementById('audioStatusText'),
-    audioDetailText: document.getElementById('audioDetailText'),
-    audioSpeedSelect: document.getElementById('audioSpeedSelect'),
+    audioNarrateBtn: $('audioNarrateBtn'),
+    audioIcon: $('audioIcon'),
+    audioStatusText: $('audioStatusText'),
+    audioDetailText: $('audioDetailText'),
+    audioSpeedSelect: $('audioSpeedSelect'),
 
-    // Slide Stage
-    currentSlideNum: document.getElementById('currentSlideNum'),
-    totalSlideNum: document.getElementById('totalSlideNum'),
-    btnSlidePrev: document.getElementById('btnSlidePrev'),
-    btnSlideNext: document.getElementById('btnSlideNext'),
-    btnSlideFullscreen: document.getElementById('btnSlideFullscreen'),
-    slideStageMain: document.getElementById('slideStageMain'),
-    slideMainImg: document.getElementById('slideMainImg'),
-    overlayPrevBtn: document.getElementById('overlayPrevBtn'),
-    overlayNextBtn: document.getElementById('overlayNextBtn'),
-    thumbnailsStrip: document.getElementById('thumbnailsStrip'),
-    slideHeadline: document.getElementById('slideHeadline'),
-    slideBulletList: document.getElementById('slideBulletList'),
-    slideNotesBox: document.getElementById('slideNotesBox'),
-    slideNotesText: document.getElementById('slideNotesText'),
+    currentSlideNum: $('currentSlideNum'),
+    totalSlideNum: $('totalSlideNum'),
+    btnSlidePrev: $('btnSlidePrev'),
+    btnSlideNext: $('btnSlideNext'),
+    btnSlideFullscreen: $('btnSlideFullscreen'),
+    btnGridView: $('btnGridView'),
+    slideStageMain: $('slideStageMain'),
+    slideMainImg: $('slideMainImg'),
+    overlayPrevBtn: $('overlayPrevBtn'),
+    overlayNextBtn: $('overlayNextBtn'),
+    thumbnailsStrip: $('thumbnailsStrip'),
+    slideGridGallery: $('slideGridGallery'),
+    slideHeadline: $('slideHeadline'),
+    slideBulletList: $('slideBulletList'),
+    slideNotesBox: $('slideNotesBox'),
+    slideNotesText: $('slideNotesText'),
 
-    // Lecture Pane
-    lectureScrollContent: document.getElementById('lectureScrollContent'),
-    toggleMaskBtn: document.getElementById('toggleMaskBtn'),
-    maskIcon: document.getElementById('maskIcon'),
-    toggleMaskRightBtn: document.getElementById('toggleMaskRightBtn'),
-    lectureCopyBtn: document.getElementById('lectureCopyBtn'),
+    lectureScrollContent: $('lectureScrollContent'),
+    lectureCopyBtn: $('lectureCopyBtn'),
+    toggleMaskBtn: $('toggleMaskBtn'),
+    maskIcon: $('maskIcon'),
+    toggleMaskRightBtn: $('toggleMaskRightBtn'),
 
-    // Presenter Fullscreen Modal
-    startPresenterBtn: document.getElementById('startPresenterBtn'),
-    presenterModal: document.getElementById('presenterModal'),
-    presenterImg: document.getElementById('presenterImg'),
-    presenterLessonTitle: document.getElementById('presenterLessonTitle'),
-    presenterSlideIndicator: document.getElementById('presenterSlideIndicator'),
-    presenterPrevBtn: document.getElementById('presenterPrevBtn'),
-    presenterNextBtn: document.getElementById('presenterNextBtn'),
-    closePresenterBtn: document.getElementById('closePresenterBtn'),
+    personalNotesToggle: $('personalNotesToggle'),
+    personalNotesArea: $('personalNotesArea'),
+    personalNotesInput: $('personalNotesInput'),
 
-    // Search Modal
-    openSearchBtn: document.getElementById('openSearchBtn'),
-    searchModal: document.getElementById('searchModal'),
-    closeSearchModalBtn: document.getElementById('closeSearchModalBtn'),
-    globalSearchInput: document.getElementById('globalSearchInput'),
-    searchResultsList: document.getElementById('searchResultsList'),
-    searchResultSummary: document.getElementById('searchResultSummary'),
+    presenterModal: $('presenterModal'),
+    presenterLessonTitle: $('presenterLessonTitle'),
+    presenterSlideIndicator: $('presenterSlideIndicator'),
+    presenterImg: $('presenterImg'),
+    startPresenterBtn: $('startPresenterBtn'),
+    closePresenterBtn: $('closePresenterBtn'),
+    presenterPrevBtn: $('presenterPrevBtn'),
+    presenterNextBtn: $('presenterNextBtn'),
+    presenterTimerToggle: $('presenterTimerToggle'),
+    presenterTimerDisplay: $('presenterTimerDisplay'),
+    presenterTimerIcon: $('presenterTimerIcon'),
 
-    // Practical Toolkit Modal
-    openToolkitBtn: document.getElementById('openToolkitBtn'),
-    toolkitModal: document.getElementById('toolkitModal'),
-    closeToolkitModalBtn: document.getElementById('closeToolkitModalBtn'),
-    toolTabTestimony: document.getElementById('toolTabTestimony'),
-    toolTabBest: document.getElementById('toolTabBest'),
-    testimonyToolContent: document.getElementById('testimonyToolContent'),
-    bestToolContent: document.getElementById('bestToolContent'),
-    testimonyBefore: document.getElementById('testimonyBefore'),
-    testimonyTurning: document.getElementById('testimonyTurning'),
-    testimonyAfter: document.getElementById('testimonyAfter'),
-    clearTestimonyBtn: document.getElementById('clearTestimonyBtn'),
-    copyTestimonyBtn: document.getElementById('copyTestimonyBtn')
+    searchModal: $('searchModal'),
+    openSearchBtn: $('openSearchBtn'),
+    closeSearchModalBtn: $('closeSearchModalBtn'),
+    globalSearchInput: $('globalSearchInput'),
+    searchResultsList: $('searchResultsList'),
+    searchResultSummary: $('searchResultSummary'),
+
+    toolkitModal: $('toolkitModal'),
+    openToolkitBtn: $('openToolkitBtn'),
+    closeToolkitModalBtn: $('closeToolkitModalBtn'),
+    toolTabTestimony: $('toolTabTestimony'),
+    toolTabBest: $('toolTabBest'),
+    testimonyToolContent: $('testimonyToolContent'),
+    bestToolContent: $('bestToolContent'),
+    testimonyBefore: $('testimonyBefore'),
+    testimonyTurning: $('testimonyTurning'),
+    testimonyAfter: $('testimonyAfter'),
+    copyTestimonyBtn: $('copyTestimonyBtn'),
+    clearTestimonyBtn: $('clearTestimonyBtn'),
   };
 
-  // --- Initialize Application ---
+  // ─────────────────────────────────────────────
+  //  INIT
+  // ─────────────────────────────────────────────
   function init() {
-    // 1. Load Data
-    if (window.BLESS_EQ_DATA && Array.isArray(window.BLESS_EQ_DATA)) {
-      state.lessons = window.BLESS_EQ_DATA;
-    } else {
-      console.warn('Waiting for BLESS_EQ_DATA or fetching curriculum.json...');
-      fetch('data/curriculum.json')
-        .then(res => res.json())
-        .then(data => {
-          state.lessons = data;
-          finishInit();
-        })
-        .catch(err => {
-          console.error('Failed to load curriculum data:', err);
-        });
+    if (!window.BLESS_EQ_DATA || !Array.isArray(window.BLESS_EQ_DATA)) {
+      DOM.lectureScrollContent.innerHTML = '<p style="padding:2rem;color:var(--text-muted);">課程資料載入失敗，請重新整理頁面。</p>';
       return;
     }
-    finishInit();
-  }
+    state.lessons = window.BLESS_EQ_DATA;
 
-  function finishInit() {
-    applyTheme(state.theme);
-    applyFontScale(state.fontScale);
-
-    // Bind Event Handlers
+    applyTheme(false);
+    applyFontScale(false);
     bindEvents();
-
-    // Render Initial UI
-    renderCurriculumList();
-    const savedLesson = localStorage.getItem('blesseq_active_lesson') || '00';
-    loadLesson(savedLesson, 1);
+    renderLessonList();
+    routeFromHash();
+    window.addEventListener('hashchange', routeFromHash);
   }
 
-  // --- Theme & Font Scaling ---
-  function applyTheme(theme) {
-    state.theme = theme;
-    DOM.html.setAttribute('data-theme', theme);
-    localStorage.setItem('blesseq_theme', theme);
-    if (theme === 'dark') {
-      DOM.themeIcon.className = 'fa-solid fa-sun';
-      DOM.themeToggleBtn.title = '切換為典雅羊皮紙日間模式';
-    } else {
-      DOM.themeIcon.className = 'fa-solid fa-moon';
-      DOM.themeToggleBtn.title = '切換為黑曜石靜夜研經模式';
+  // ─────────────────────────────────────────────
+  //  URL HASH ROUTING (P1-5)
+  // ─────────────────────────────────────────────
+  function routeFromHash() {
+    const hash = window.location.hash.replace('#', '');
+    if (hash) {
+      const [lessonId, slideStr] = hash.split('/');
+      const slideIdx = parseInt(slideStr, 10) || 1;
+      if (state.lessons.find(l => l.id === lessonId)) {
+        loadLesson(lessonId, slideIdx);
+        return;
+      }
+    }
+    // Fallback: last visited lesson from localStorage
+    const lastLesson = safeStorage('get', 'blesseq_last_lesson') || state.lessons[0].id;
+    const lastSlide = parseInt(safeStorage('get', 'blesseq_last_slide') || '1', 10);
+    loadLesson(lastLesson, lastSlide);
+  }
+
+  function updateHash(lessonId, slideIdx) {
+    const newHash = `#${lessonId}/${slideIdx}`;
+    if (window.location.hash !== newHash) {
+      history.replaceState(null, '', newHash);
     }
   }
 
-  function applyFontScale(scale) {
-    state.fontScale = scale;
-    document.body.style.fontSize = `${scale * 16}px`;
-    localStorage.setItem('blesseq_font_scale', scale.toString());
+  // ─────────────────────────────────────────────
+  //  THEME ENGINE (P1-1: 3 themes)
+  // ─────────────────────────────────────────────
+  function applyTheme(save = true) {
+    if (state.themeIndex < 0 || state.themeIndex >= THEMES.length) state.themeIndex = 0;
+    const theme = THEMES[state.themeIndex];
+    DOM.html.setAttribute('data-theme', theme);
+    DOM.themeIcon.className = `fa-solid ${THEME_ICONS[theme]}`;
+    DOM.themeToggleBtn.setAttribute('aria-label', `目前主題：${['日光','古卷護眼','暗夜'][state.themeIndex]}，點擊切換下一主題`);
+    if (save) safeStorage('set', 'blesseq_theme', theme);
   }
 
-  // --- Category Filter & Curriculum List ---
-  function renderCurriculumList() {
-    const filtered = state.lessons.filter(l => {
-      if (state.activeCategory === 'all') return true;
-      return l.category === state.activeCategory;
-    });
+  function cycleTheme() {
+    state.themeIndex = (state.themeIndex + 1) % THEMES.length;
+    applyTheme();
+  }
 
-    DOM.lessonCountBadge.textContent = `${filtered.length} 門課`;
+  // ─────────────────────────────────────────────
+  //  FONT SCALE (P0-6: fixed to use html element)
+  // ─────────────────────────────────────────────
+  function applyFontScale(save = true) {
+    if (state.fontScaleIndex < 0 || state.fontScaleIndex >= FONT_SCALES.length) state.fontScaleIndex = 0;
+    const scale = FONT_SCALES[state.fontScaleIndex];
+    document.documentElement.style.fontSize = `${scale * 16}px`; // P0-6 FIX: was body
+    DOM.fontScaleBtn.setAttribute('aria-label', `目前字體：${['標準','大','超大'][state.fontScaleIndex]}，點擊放大`);
+    if (save) safeStorage('set', 'blesseq_font_scale_idx', String(state.fontScaleIndex));
+  }
+
+  function cycleFontScale() {
+    state.fontScaleIndex = (state.fontScaleIndex + 1) % FONT_SCALES.length;
+    applyFontScale();
+  }
+
+  // ─────────────────────────────────────────────
+  //  LESSON LIST RENDER
+  // ─────────────────────────────────────────────
+  function renderLessonList() {
+    const filtered = state.activeCategory === 'all'
+      ? state.lessons
+      : state.lessons.filter(l => l.category === state.activeCategory);
+
     DOM.lessonsContainer.innerHTML = '';
+    DOM.lessonCountBadge.textContent = `${filtered.length} 門課`;
 
     filtered.forEach(lesson => {
-      const item = document.createElement('a');
-      item.href = 'javascript:void(0)';
-      item.className = `lesson-item ${lesson.id === state.activeLessonId ? 'active' : ''}`;
-      item.dataset.lessonId = lesson.id;
+      const progress = state.progress[lesson.id] || { lastSlide: 0, slideCount: lesson.slideCount };
+      const pct = lesson.slideCount > 0 ? Math.round((progress.lastSlide / lesson.slideCount) * 100) : 0;
+
+      const item = document.createElement('button');
+      item.className = `lesson-item${lesson.id === state.activeLessonId ? ' active' : ''}`;
+      item.setAttribute('role', 'listitem');
+      item.setAttribute('aria-label', `${lesson.code} ${lesson.title}，共 ${lesson.slideCount} 張投影片`);
+      item.setAttribute('aria-current', lesson.id === state.activeLessonId ? 'true' : 'false');
+      item.dataset.id = lesson.id;
+
+      const circumference = 2 * Math.PI * 11; // r=11
+      const dashOffset = circumference * (1 - pct / 100);
 
       item.innerHTML = `
         <div class="lesson-badge">${lesson.code}</div>
@@ -183,133 +237,153 @@
           <div class="lesson-name">${lesson.title}</div>
           <div class="lesson-sub">${lesson.subtitle || ''}</div>
           <div class="lesson-meta">
-            <span class="meta-chip"><i class="fa-regular fa-images"></i> ${lesson.slideCount} 投影片</span>
-            <span class="meta-chip"><i class="fa-regular fa-file-lines"></i> ${lesson.pdfPageCount} 講義頁</span>
+            <span class="meta-chip"><i class="fa-regular fa-image" aria-hidden="true"></i> ${lesson.slideCount} 張</span>
+            ${progress.lastSlide > 0 ? `<span class="meta-chip" style="color:var(--olive-primary);">進度 ${pct}%</span>` : ''}
+          </div>
+          <div class="lesson-progress-bar" aria-label="學習進度 ${pct}%">
+            <div class="lesson-progress-fill" style="width:${pct}%"></div>
           </div>
         </div>
       `;
-
-      item.addEventListener('click', () => {
-        loadLesson(lesson.id, 1);
-      });
-
+      item.addEventListener('click', () => loadLesson(lesson.id, 1));
       DOM.lessonsContainer.appendChild(item);
     });
   }
 
-  // --- Load Lesson & Synchronize Workspace ---
-  function loadLesson(lessonId, slideIndex = 1) {
+  // ─────────────────────────────────────────────
+  //  LOAD LESSON
+  // ─────────────────────────────────────────────
+  function loadLesson(lessonId, slideIdx) {
     const lesson = state.lessons.find(l => l.id === lessonId);
     if (!lesson) return;
 
-    state.activeLessonId = lessonId;
-    state.activeSlideIndex = slideIndex;
-    localStorage.setItem('blesseq_active_lesson', lessonId);
-
-    // Stop ongoing audio
     stopAudio();
+    state.activeLessonId = lessonId;
+    state.activeSlideIndex = Math.max(1, Math.min(slideIdx, lesson.slideCount));
 
-    // 1. Update Left Sidebar Active State
-    document.querySelectorAll('.lesson-item').forEach(el => {
-      el.classList.toggle('active', el.dataset.lessonId === lessonId);
-    });
+    safeStorage('set', 'blesseq_last_lesson', lessonId);
+    updateHash(lessonId, state.activeSlideIndex);
 
-    // 2. Update Lesson Banner
-    DOM.bannerCategory.innerHTML = `<i class="fa-solid fa-bookmark"></i> <span>${lesson.categoryName} · 第 ${lesson.code} 單元</span>`;
-    DOM.bannerTitle.textContent = lesson.title;
-    DOM.bannerSubtitle.textContent = `${lesson.subtitle || ''} · 共 ${lesson.slideCount} 頁簡報與完整門下講義教學`;
-
-    // 3. Update Slide Deck
-    DOM.totalSlideNum.textContent = lesson.slideCount;
-    renderThumbnails(lesson);
-    setSlide(slideIndex);
-
-    // 4. Update Lecture Narrative (Right Pane)
+    renderLessonList();
+    renderBanner(lesson);
+    renderSlides(lesson, state.activeSlideIndex);
     renderLectureNarrative(lesson);
-
-    // Scroll right pane to top
-    DOM.lectureScrollContent.scrollTop = 0;
+    restorePersonalNotes(lessonId);
+    updateProgress(lessonId, state.activeSlideIndex);
   }
 
-  // --- Render Slide Thumbnails ---
-  function renderThumbnails(lesson) {
-    DOM.thumbnailsStrip.innerHTML = '';
-    lesson.slides.forEach(slide => {
-      const thumb = document.createElement('div');
-      thumb.className = `thumb-item ${slide.slideIndex === state.activeSlideIndex ? 'active' : ''}`;
-      thumb.dataset.slideIndex = slide.slideIndex;
-
-      thumb.innerHTML = `
-        <img src="${slide.image}" alt="Slide ${slide.slideIndex}" loading="lazy">
-        <span class="thumb-number">${slide.slideIndex}</span>
-      `;
-
-      thumb.addEventListener('click', () => {
-        setSlide(slide.slideIndex);
-      });
-
-      DOM.thumbnailsStrip.appendChild(thumb);
-    });
+  // ─────────────────────────────────────────────
+  //  BANNER
+  // ─────────────────────────────────────────────
+  function renderBanner(lesson) {
+    const catLabels = { overview: '門訓總攬', core: '門徒成長必修', practical: '幸福小組實作秘笈' };
+    DOM.bannerCategory.querySelector('span').textContent = catLabels[lesson.category] || '門訓課程';
+    DOM.bannerTitle.textContent = lesson.title;
+    DOM.bannerSubtitle.textContent = lesson.subtitle || '';
+    DOM.audioStatusText.textContent = '講義述說語音導讀';
+    DOM.audioDetailText.textContent = '點擊播放聆聽本課講義全文';
+    DOM.audioIcon.className = 'fa-solid fa-volume-high';
+    DOM.audioNarrateBtn.classList.remove('playing');
   }
 
-  // --- Switch Slide ---
-  function setSlide(slideIndex) {
+  // ─────────────────────────────────────────────
+  //  SLIDE RENDERING & NAVIGATION
+  // ─────────────────────────────────────────────
+  function renderSlides(lesson, slideIdx) {
+    DOM.totalSlideNum.textContent = lesson.slideCount;
+    renderThumbnails(lesson, slideIdx);
+    if (state.isGridOpen) renderSlideGrid(lesson);
+    setSlide(slideIdx, 'none');
+  }
+
+  function setSlide(newIdx, direction) {
     const lesson = state.lessons.find(l => l.id === state.activeLessonId);
-    if (!lesson || !lesson.slides || lesson.slides.length === 0) return;
+    if (!lesson) return;
 
-    // Bounds check
-    if (slideIndex < 1) slideIndex = 1;
-    if (slideIndex > lesson.slideCount) slideIndex = lesson.slideCount;
+    const idx = Math.max(1, Math.min(newIdx, lesson.slideCount));
+    const slide = lesson.slides[idx - 1];
+    if (!slide) return;
 
-    state.activeSlideIndex = slideIndex;
-    const slide = lesson.slides[slideIndex - 1];
+    const prevIdx = state.activeSlideIndex;
+    state.activeSlideIndex = idx;
 
-    // Update Counter
-    DOM.currentSlideNum.textContent = slideIndex;
+    // Slide image with transition animation (P2-9)
+    const img = DOM.slideMainImg;
+    img.classList.remove('enter-right', 'enter-left');
+    void img.offsetWidth; // force reflow
+    if (direction === 'next') img.classList.add('enter-right');
+    else if (direction === 'prev') img.classList.add('enter-left');
 
-    // Update Main Slide Image with soft fade
-    DOM.slideMainImg.style.opacity = '0.4';
-    DOM.slideMainImg.src = slide.image;
-    DOM.slideMainImg.onload = () => {
-      DOM.slideMainImg.style.opacity = '1';
-    };
+    img.src = slide.image;
+    img.alt = slide.title || `第${state.activeLessonId}課 第${idx}張投影片`;
 
-    // Update Presenter Image if Open
+    DOM.currentSlideNum.textContent = idx;
+    updateHash(state.activeLessonId, idx);
+    safeStorage('set', 'blesseq_last_slide', String(idx));
+    updateProgress(state.activeLessonId, idx);
+
+    // Sync thumbnails
+    syncThumbnailActive(idx);
+
+    // Update slide info pane (P1-11 fix)
+    renderSlideInfo(slide);
+
+    // Update presenter if open
     if (state.isPresenterOpen) {
       DOM.presenterImg.src = slide.image;
-      DOM.presenterSlideIndicator.textContent = `${slideIndex} / ${lesson.slideCount}`;
+      DOM.presenterSlideIndicator.textContent = `${idx} / ${lesson.slideCount}`;
     }
 
-    // Update Active Thumbnail
-    document.querySelectorAll('.thumb-item').forEach(el => {
-      const isCur = parseInt(el.dataset.slideIndex, 10) === slideIndex;
-      el.classList.toggle('active', isCur);
-      if (isCur) {
-        el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    // Preload adjacent slides (P1-9)
+    preloadAdjacentSlides(lesson, idx);
+
+    // Sync lecture scroll (P1-14)
+    syncLectureScroll(slide);
+  }
+
+  function preloadAdjacentSlides(lesson, idx) {
+    [idx + 1, idx + 2, idx - 1].forEach(i => {
+      if (i >= 1 && i <= lesson.slideCount) {
+        const s = lesson.slides[i - 1];
+        if (s && s.image) {
+          const img = new Image();
+          img.src = s.image;
+        }
       }
     });
+  }
 
-    // Update Slide Bullet Points and Notes
-    DOM.slideHeadline.textContent = slide.title || `投影片 ${slideIndex} 重點提要`;
+  function renderSlideInfo(slide) {
+    DOM.slideHeadline.textContent = slide.title
+      ? slide.title.replace(/\r?\n/g, ' ').replace(/\t/g, ' ').trim()
+      : '投影片重點提要';
+
     DOM.slideBulletList.innerHTML = '';
-    
-    if (slide.textLines && slide.textLines.length > 0) {
-      slide.textLines.slice(1).forEach(line => {
-        if (line && line.trim()) {
-          const li = document.createElement('li');
-          li.textContent = line.trim();
-          DOM.slideBulletList.appendChild(li);
-        }
-      });
-    }
 
-    if (DOM.slideBulletList.children.length === 0) {
+    // P1-11 FIX: Skip first line only if it duplicates the title
+    const titleClean = (slide.title || '').replace(/\s+/g, ' ').trim();
+    const lines = (slide.textLines || []).filter((line, idx) => {
+      const lineClean = line.replace(/[\r\n\t]+/g, ' ').trim();
+      if (idx === 0 && lineClean && titleClean && lineClean === titleClean) return false;
+      return lineClean.length > 0;
+    });
+
+    if (lines.length > 0) {
+      lines.forEach(line => {
+        const cleanLine = line.replace(/[\r\n\t]+/g, ' ').trim();
+        if (!cleanLine) return;
+        const li = document.createElement('li');
+        li.textContent = cleanLine;
+        DOM.slideBulletList.appendChild(li);
+      });
+    } else {
       const li = document.createElement('li');
       li.textContent = '此頁為視覺概念圖示或經文全版呈現。';
+      li.style.color = 'var(--text-muted)';
+      li.style.fontStyle = 'italic';
       DOM.slideBulletList.appendChild(li);
     }
 
-    // Speaker Notes
     if (slide.notes && slide.notes.trim()) {
       DOM.slideNotesBox.style.display = 'block';
       DOM.slideNotesText.textContent = slide.notes.trim();
@@ -318,471 +392,807 @@
     }
   }
 
-  // --- Lecture Narrative (Right Pane) Parsing & Rendering ---
+  // ─────────────────────────────────────────────
+  //  THUMBNAILS
+  // ─────────────────────────────────────────────
+  function renderThumbnails(lesson, activeIdx) {
+    DOM.thumbnailsStrip.innerHTML = '';
+    lesson.slides.forEach((slide, i) => {
+      const idx = i + 1;
+      const div = document.createElement('div');
+      div.className = `thumb-item${idx === activeIdx ? ' active' : ''}`;
+      div.setAttribute('role', 'option');
+      div.setAttribute('aria-selected', idx === activeIdx ? 'true' : 'false');
+      div.setAttribute('aria-label', `第 ${idx} 張投影片`);
+      div.dataset.idx = idx;
+
+      const img = document.createElement('img');
+      img.src = slide.image;
+      img.alt = '';
+      img.loading = 'lazy';
+      div.appendChild(img);
+      div.addEventListener('click', () => {
+        const dir = idx > state.activeSlideIndex ? 'next' : 'prev';
+        setSlide(idx, dir);
+      });
+      DOM.thumbnailsStrip.appendChild(div);
+    });
+  }
+
+  function syncThumbnailActive(activeIdx) {
+    DOM.thumbnailsStrip.querySelectorAll('.thumb-item').forEach(t => {
+      const isActive = parseInt(t.dataset.idx) === activeIdx;
+      t.classList.toggle('active', isActive);
+      t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      if (isActive) t.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  //  SLIDE GRID GALLERY (P2-7)
+  // ─────────────────────────────────────────────
+  function toggleGridView() {
+    state.isGridOpen = !state.isGridOpen;
+    DOM.slideGridGallery.hidden = !state.isGridOpen;
+    DOM.btnGridView.setAttribute('aria-label', state.isGridOpen ? '關閉格線總覽' : '切換格線縮圖總覽模式');
+
+    if (state.isGridOpen) {
+      const lesson = state.lessons.find(l => l.id === state.activeLessonId);
+      if (lesson) renderSlideGrid(lesson);
+    }
+  }
+
+  function renderSlideGrid(lesson) {
+    DOM.slideGridGallery.innerHTML = '';
+    lesson.slides.forEach((slide, i) => {
+      const idx = i + 1;
+      const div = document.createElement('div');
+      div.className = `slide-grid-thumb${idx === state.activeSlideIndex ? ' active' : ''}`;
+      div.setAttribute('aria-label', `第 ${idx} 張`);
+      const img = document.createElement('img');
+      img.src = slide.image;
+      img.alt = '';
+      img.loading = 'lazy';
+      div.appendChild(img);
+      div.addEventListener('click', () => {
+        const dir = idx > state.activeSlideIndex ? 'next' : 'prev';
+        setSlide(idx, dir);
+        toggleGridView();
+      });
+      DOM.slideGridGallery.appendChild(div);
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  //  LECTURE SYNC SCROLL (P1-14)
+  // ─────────────────────────────────────────────
+  function syncLectureScroll(slide) {
+    if (!slide || !slide.title) return;
+    const titleClean = slide.title.replace(/\s+/g, '').slice(0, 6);
+    const sections = DOM.lectureScrollContent.querySelectorAll('[data-section-title]');
+    let bestMatch = null;
+    sections.forEach(sec => {
+      const secTitle = (sec.dataset.sectionTitle || '').replace(/\s+/g, '').slice(0, 6);
+      if (secTitle && titleClean && secTitle.includes(titleClean.slice(0, 3))) {
+        bestMatch = sec;
+      }
+    });
+    if (bestMatch) {
+      bestMatch.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  //  LECTURE NARRATIVE (Right Pane)
+  // ─────────────────────────────────────────────
   function renderLectureNarrative(lesson) {
     DOM.lectureScrollContent.innerHTML = '';
-
     const fullText = lesson.fullPdfText || '';
 
-    // If PDF text is short or not loaded, fallback gracefully
-    if (!fullText || fullText.trim().length === 0) {
+    if (!fullText || fullText.trim().length < 10) {
       DOM.lectureScrollContent.innerHTML = `
-        <div style="padding: 2rem; text-align: center; color: var(--text-muted);">
-          <i class="fa-solid fa-book-open" style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--gold-primary);"></i>
+        <div style="padding:2rem;text-align:center;color:var(--text-muted);">
+          <i class="fa-solid fa-book-open" style="font-size:2.5rem;margin-bottom:1rem;color:var(--gold-primary);"></i>
           <p>本課講義正在載入中，請參考左側投影片內容。</p>
-        </div>
-      `;
+        </div>`;
       return;
     }
 
-    // Split text into meaningful sections
-    // Standard structure in 門下講義:
-    // 【課程目標】
-    // 【前言提要】
-    // 一、 二、 三、 大綱
-    // 經文引用 【...】
-    // 反思與作業
-
-    const lines = fullText.split('\n').map(l => l.trim()).filter(l => l);
     let htmlBuffer = '';
-    let currentSection = '';
 
-    // Extract Course Goals & Scriptures
+    // Course Goals
     const goalsMatch = fullText.match(/【課程目標】([\s\S]*?)(?=【|一、|\d+\.|$)/);
-    if (goalsMatch && goalsMatch[1]) {
+    if (goalsMatch && goalsMatch[1].trim()) {
       htmlBuffer += `
-        <div class="teaching-section">
-          <h4><i class="fa-solid fa-bullseye text-gold"></i> 課程目標</h4>
-          <div class="teaching-text" style="font-weight: 500; color: var(--text-primary);">
-            ${formatLectureParagraph(goalsMatch[1].trim())}
+        <div class="teaching-section" data-section-title="課程目標">
+          <h4><i class="fa-solid fa-bullseye text-gold" aria-hidden="true"></i> 課程目標</h4>
+          <div class="teaching-text" style="font-weight:500;color:var(--text-primary);">
+            ${formatLectureParagraph(goalsMatch[1].trim(), lesson)}
           </div>
-        </div>
-      `;
+        </div>`;
     }
 
-    // Key Scriptures
-    const scriptureRegex = /【([^】]+?(?:書|記|篇|音|徒|羅|林|加|弗|腓|西|帖|太|可|路|約)[^】]+?)】([\s\S]*?)(?=【|[一二三四五六七八九十]、|\d+\.|$)/g;
+    // Key Scriptures — match 【...書|記|篇|音|徒|羅|林...】
+    const scriptureRegex = /【([^】]{2,40}(?:書|記|篇|音|徒|羅|林|加|弗|腓|西|帖|太|可|路|約|撒|王|代|尼|拉|哈|彌|鴻|番|該|亞|瑪|提|多|門|希|雅|彼|猶|啟)[^】]{0,30})】([\s\S]*?)(?=【|[一二三四五六七八九十]、|\d+\.|$)/g;
     let sMatch;
     let sCount = 0;
-    while ((sMatch = scriptureRegex.exec(fullText)) !== null && sCount < 3) {
+    while ((sMatch = scriptureRegex.exec(fullText)) !== null && sCount < 4) {
       const cite = sMatch[1].trim();
-      const verseText = sMatch[2].trim().replace(/\s+/g, ' ');
-      if (verseText.length > 5 && verseText.length < 300) {
+      const verseText = sMatch[2].trim().replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ');
+      if (verseText.length > 5 && verseText.length < 400) {
         htmlBuffer += `
-          <div class="scripture-card">
+          <div class="scripture-card" data-section-title="${cite}">
             <div class="scripture-citation">
-              <i class="fa-solid fa-book-bible text-gold"></i> 【${cite}】
+              <i class="fa-solid fa-book-bible text-gold" aria-hidden="true"></i> 【${escapeHtml(cite)}】
             </div>
-            <div class="scripture-text">「${verseText}」</div>
-          </div>
-        `;
+            <div class="scripture-text">「${escapeHtml(verseText)}」</div>
+          </div>`;
         sCount++;
       }
     }
 
-    // Parse Outlines (一、 二、 三、 ...)
+    // Outline sections: 一、 二、 三、 ...
     const sectionRegex = /([一二三四五六七八九十]、[^\n]+)/g;
     const parts = fullText.split(sectionRegex);
 
     for (let i = 1; i < parts.length; i += 2) {
       const secTitle = parts[i].trim();
       const secBody = (parts[i + 1] || '').trim();
-
       htmlBuffer += `
-        <div class="teaching-section">
-          <h4>${secTitle}</h4>
+        <div class="teaching-section" data-section-title="${escapeHtml(secTitle)}">
+          <h4>${escapeHtml(secTitle)}</h4>
           <div class="teaching-text">
-            ${formatLectureParagraph(secBody)}
+            ${formatLectureParagraph(secBody, lesson)}
           </div>
-        </div>
-      `;
+        </div>`;
     }
 
-    // If no numbered sections matched, render paragraphs nicely
     if (parts.length <= 1) {
       htmlBuffer += `
-        <div class="teaching-section">
+        <div class="teaching-section" data-section-title="講義核心述說">
           <h4>講義核心述說</h4>
           <div class="teaching-text">
-            ${formatLectureParagraph(fullText)}
+            ${formatLectureParagraph(fullText, lesson)}
           </div>
-        </div>
-      `;
+        </div>`;
     }
 
-    // Add Small Group Reflection & Practical Workshop
+    // Reflection box
     htmlBuffer += `
-      <div style="background: var(--bg-surface-subtle); border: 1.5px dashed var(--gold-border); border-radius: var(--radius-md); padding: 1.25rem 1.5rem; margin-top: 1.5rem;">
-        <h4 style="font-size: 1rem; color: var(--gold-primary); margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.5rem;">
-          <i class="fa-solid fa-comments"></i> 課後反思與小組實作操練
-        </h4>
-        <ul style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.7; padding-left: 1.2rem;">
+      <div class="reflection-box">
+        <h4><i class="fa-solid fa-comments" aria-hidden="true"></i> 課後反思與小組實作操練</h4>
+        <ul>
           <li>默想本課核心經文，哪一句話最觸動你此時此刻的心境？</li>
           <li>在實際服事或日常生活中，本課觀念如何幫助你突破目前的瓶頸？</li>
           <li>與幸福小組同工彼此代禱，並寫下具體的實踐行動清單。</li>
         </ul>
-      </div>
-    `;
+      </div>`;
 
     DOM.lectureScrollContent.innerHTML = htmlBuffer;
-
-    // Apply interactive blank behavior
     updateBlanksDisplay();
   }
 
-  // Format Paragraph with Interactive Fill-in-the-Blanks
-  function formatLectureParagraph(text) {
-    // 1. Clean line breaks and headers
+  // ─────────────────────────────────────────────
+  //  FILL-IN-BLANKS ENGINE (P1-3: data-driven)
+  // ─────────────────────────────────────────────
+  function formatLectureParagraph(text, lesson) {
+    if (!text) return '';
+
+    // Clean control characters
     let cleaned = text
       .replace(/門徒學校\(下\)[\s\S]*?\d+/g, '')
       .replace(/幸福小組實作秘笈[\s\S]*?\d+/g, '')
-      .replace(/\t+/g, ' ')
-      .replace(/\n\s*\n/g, '<br><br>');
+      .replace(/[\r\t]+/g, ' ')
+      .replace(/\n\s*\n/g, '<br><br>')
+      .replace(/\n/g, '<br>');
 
-    // 2. Identify Fill-in keywords (words inside quotes or blanks or key terms)
-    // Keywords with underlines or prominent terms
-    cleaned = cleaned.replace(/([\u4e00-\u9fa5]{2,6})(?=\s*的作為|\s*的經歷|\s*與\s*榮耀|\s*命令|\s*應有的回應|\s*相信耶穌)/g, function(match) {
-      return createBlankSpan(match);
-    });
+    // P1-3: Data-driven blank detection — use slides' textLines with full-width spaces
+    // Pattern 1: Lines from slides that have 　　　 (ideographic spaces as blanks)
+    if (lesson && lesson.slides) {
+      lesson.slides.forEach(slide => {
+        (slide.textLines || []).forEach(line => {
+          // Detect fill-in pattern: text before blank spaces, then more text
+          const blankPattern = /([^\u3000]+?)\u3000{2,}([^\u3000]*)/g;
+          let bm;
+          while ((bm = blankPattern.exec(line)) !== null) {
+            // The "blank" in slide text is marked by full-width spaces
+            // Try to find an adjacent slide that has the answer
+            const before = bm[1].trim();
+            const after = bm[2].trim();
+            if (before.length >= 2 && before.length <= 20) {
+              // Escape for HTML and replace in cleaned text
+              const escaped = before.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              try {
+                const re = new RegExp(escaped, 'g');
+                cleaned = cleaned.replace(re, createBlankSpan(before));
+              } catch(e) { /* ignore */ }
+            }
+          }
+        });
+      });
+    }
 
-    // Also match explicit brackets or fills
-    cleaned = cleaned.replace(/【填空：([^】]+)】/g, function(m, p1) {
-      return createBlankSpan(p1);
-    });
+    // Pattern 2: Direct blank markers in PDF text (various forms)
+    cleaned = cleaned.replace(/_{3,}/g, () => createBlankSpan('　　　'));
+    cleaned = cleaned.replace(/\u3000{2,}/g, () => createBlankSpan('　　　'));
+
+    // Pattern 3: 【填空：answer】 explicit markers
+    cleaned = cleaned.replace(/【填空：([^】]+)】/g, (m, p1) => createBlankSpan(p1));
 
     return cleaned;
   }
 
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
   function createBlankSpan(text) {
-    const isMasked = state.isMasked;
-    return `<span class="blank-answer ${isMasked ? 'masked' : ''}" data-answer="${text}" title="點擊揭曉/遮蔽解答">${text}</span>`;
+    const safe = text.replace(/"/g, '&quot;');
+    return `<span class="blank-answer${state.isMasked ? ' masked' : ''}" data-answer="${safe}" role="button" tabindex="0" aria-label="填空題，點擊揭曉解答" title="點擊揭曉/遮蔽解答">${escapeHtml(text)}</span>`;
   }
 
   function updateBlanksDisplay() {
-    const blanks = DOM.lectureScrollContent.querySelectorAll('.blank-answer');
-    blanks.forEach(b => {
+    DOM.lectureScrollContent.querySelectorAll('.blank-answer').forEach(b => {
       b.classList.toggle('masked', state.isMasked);
-      b.onclick = function(e) {
+      b.onclick = function (e) {
         e.stopPropagation();
-        this.classList.toggle('masked');
+        this.classList.remove('masked');
         this.classList.add('revealed');
+      };
+      b.onkeydown = function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.click();
+        }
       };
     });
   }
 
-  // --- Presenter Fullscreen Mode ---
+  // ─────────────────────────────────────────────
+  //  PRESENTER MODE (P3-7: with timer)
+  // ─────────────────────────────────────────────
   function openPresenter() {
     state.isPresenterOpen = true;
     const lesson = state.lessons.find(l => l.id === state.activeLessonId);
     if (!lesson) return;
+    const slide = lesson.slides[state.activeSlideIndex - 1];
 
     DOM.presenterLessonTitle.textContent = `${lesson.code} ${lesson.title}`;
     DOM.presenterSlideIndicator.textContent = `${state.activeSlideIndex} / ${lesson.slideCount}`;
-    DOM.presenterImg.src = lesson.slides[state.activeSlideIndex - 1].image;
+    DOM.presenterImg.src = slide ? slide.image : '';
     DOM.presenterModal.style.display = 'flex';
+    DOM.presenterModal.removeAttribute('hidden');
 
-    // Request native fullscreen if available
+    // Focus management (P2-3)
+    DOM.closePresenterBtn.focus();
+
     try {
       if (document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen();
       }
-    } catch (e) {
-      console.warn('Fullscreen request bypassed:', e);
-    }
+    } catch (e) { /* ignore */ }
   }
 
   function closePresenter() {
     state.isPresenterOpen = false;
     DOM.presenterModal.style.display = 'none';
+    stopPresenterTimer();
+    DOM.startPresenterBtn.focus();
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     }
   }
 
-  // --- Audio Narration (Web Speech API) ---
+  // Presenter Timer (P3-7)
+  function togglePresenterTimer() {
+    if (state.timerRunning) {
+      state.timerRunning = false;
+      clearInterval(state.timerInterval);
+      DOM.presenterTimerIcon.className = 'fa-solid fa-play';
+    } else {
+      state.timerRunning = true;
+      DOM.presenterTimerIcon.className = 'fa-solid fa-pause';
+      state.timerInterval = setInterval(() => {
+        state.timerSeconds++;
+        const m = String(Math.floor(state.timerSeconds / 60)).padStart(2, '0');
+        const s = String(state.timerSeconds % 60).padStart(2, '0');
+        DOM.presenterTimerDisplay.textContent = `${m}:${s}`;
+      }, 1000);
+    }
+  }
+
+  function stopPresenterTimer() {
+    state.timerRunning = false;
+    state.timerSeconds = 0;
+    clearInterval(state.timerInterval);
+    DOM.presenterTimerDisplay.textContent = '00:00';
+    DOM.presenterTimerIcon.className = 'fa-solid fa-play';
+  }
+
+  // ─────────────────────────────────────────────
+  //  AUDIO NARRATION (P1-6: chunked, Chrome GC fix)
+  // ─────────────────────────────────────────────
   function toggleAudio() {
     if (!('speechSynthesis' in window)) {
       alert('您的瀏覽器不支援語音合成功能，建議使用 Chrome / Edge 瀏覽器。');
       return;
     }
-
-    if (state.isSpeaking) {
-      stopAudio();
-    } else {
-      startAudio();
-    }
+    state.isSpeaking ? stopAudio() : startAudio();
   }
 
   function startAudio() {
     const lesson = state.lessons.find(l => l.id === state.activeLessonId);
     if (!lesson) return;
-
     window.speechSynthesis.cancel();
 
-    // Extract plain text for narration
-    const textToRead = `${lesson.title}。${lesson.subtitle || ''}。` + 
-      DOM.lectureScrollContent.innerText.replace(/[•？\n]+/g, '，').slice(0, 1500);
+    const rawText = `${lesson.title}。${lesson.subtitle || ''}。` +
+      DOM.lectureScrollContent.innerText
+        .replace(/[•？\n]+/g, '，')
+        .replace(/，+/g, '，')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-    const utterance = new SpeechSynthesisUtterance(textToRead);
+    // Split into ~400 char chunks at sentence boundaries
+    state.synthChunks = splitTextToChunks(rawText, 400);
+    state.synthChunkIdx = 0;
+    state.isSpeaking = true;
+
+    DOM.audioIcon.className = 'fa-solid fa-pause';
+    DOM.audioNarrateBtn.classList.add('playing');
+    DOM.audioStatusText.textContent = '語音朗讀中...';
+    DOM.audioDetailText.textContent = '點擊暫停';
+
+    speakChunk();
+
+    // Chrome GC keepalive (P1-6)
+    state.speechKeepAliveInterval = setInterval(() => {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.pause();
+        window.speechSynthesis.resume();
+      }
+    }, 10000);
+  }
+
+  function splitTextToChunks(text, maxLen) {
+    const chunks = [];
+    let remaining = text;
+    while (remaining.length > 0) {
+      if (remaining.length <= maxLen) { chunks.push(remaining); break; }
+      let cutAt = maxLen;
+      // Find last sentence boundary within maxLen
+      const sentenceEnd = remaining.slice(0, maxLen).lastIndexOf('。');
+      if (sentenceEnd > 50) cutAt = sentenceEnd + 1;
+      else {
+        const commaEnd = remaining.slice(0, maxLen).lastIndexOf('，');
+        if (commaEnd > 50) cutAt = commaEnd + 1;
+      }
+      chunks.push(remaining.slice(0, cutAt));
+      remaining = remaining.slice(cutAt).trim();
+    }
+    return chunks;
+  }
+
+  function speakChunk() {
+    if (!state.isSpeaking || state.synthChunkIdx >= state.synthChunks.length) {
+      stopAudio();
+      return;
+    }
+
+    const text = state.synthChunks[state.synthChunkIdx];
+    const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'zh-TW';
     utterance.rate = state.playbackRate;
 
-    // Find zh voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const zhVoice = voices.find(v => v.lang === 'zh-TW' || v.lang.startsWith('zh'));
-    if (zhVoice) utterance.voice = zhVoice;
-
-    utterance.onstart = () => {
-      state.isSpeaking = true;
-      DOM.audioIcon.className = 'fa-solid fa-pause';
-      DOM.audioStatusText.textContent = '語音朗讀中...';
-      DOM.audioDetailText.textContent = '點擊暫停';
+    // Voice selection — wait for voices (P1-6)
+    const setVoice = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const zhVoice = voices.find(v => v.lang === 'zh-TW') || voices.find(v => v.lang.startsWith('zh'));
+      if (zhVoice) utterance.voice = zhVoice;
     };
 
-    utterance.onend = utterance.onerror = () => {
-      stopAudio();
+    if (window.speechSynthesis.getVoices().length > 0) {
+      setVoice();
+    } else {
+      window.speechSynthesis.addEventListener('voiceschanged', setVoice, { once: true });
+    }
+
+    utterance.onend = () => {
+      state.synthChunkIdx++;
+      speakChunk();
     };
 
-    state.synthUtterance = utterance;
+    utterance.onerror = () => stopAudio();
     window.speechSynthesis.speak(utterance);
   }
 
   function stopAudio() {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
     state.isSpeaking = false;
+    state.synthChunks = [];
+    state.synthChunkIdx = 0;
+    window.speechSynthesis.cancel();
+    clearInterval(state.speechKeepAliveInterval);
     DOM.audioIcon.className = 'fa-solid fa-volume-high';
+    DOM.audioNarrateBtn.classList.remove('playing');
     DOM.audioStatusText.textContent = '講義述說語音導讀';
     DOM.audioDetailText.textContent = '點擊播放聆聽本課講義全文';
   }
 
-  // --- Global Realtime Search ---
+  // ─────────────────────────────────────────────
+  //  SEARCH (P0-2: Regex-safe)
+  // ─────────────────────────────────────────────
   function openSearch() {
-    DOM.searchModal.classList.add('open');
+    DOM.searchModal.style.display = 'flex';
+    DOM.globalSearchInput.value = '';
+    DOM.searchResultsList.innerHTML = '';
+    DOM.searchResultSummary.textContent = '請輸入關鍵字進行檢索';
     DOM.globalSearchInput.focus();
+    trapFocus(DOM.searchModal);
   }
 
   function closeSearch() {
-    DOM.searchModal.classList.remove('open');
+    DOM.searchModal.style.display = 'none';
+    DOM.openSearchBtn.focus();
+    releaseFocus();
   }
 
   function handleSearch(query) {
-    const q = query.trim().toLowerCase();
-    if (!q) {
+    query = query.trim();
+    if (!query) {
       DOM.searchResultsList.innerHTML = '';
       DOM.searchResultSummary.textContent = '請輸入關鍵字進行檢索';
       return;
     }
 
-    const hits = [];
-
-    state.lessons.forEach(l => {
-      // 1. Check title and subtitle
-      if (l.title.toLowerCase().includes(q) || (l.subtitle && l.subtitle.toLowerCase().includes(q))) {
-        hits.push({
-          lessonId: l.id,
-          lessonCode: l.code,
-          lessonTitle: l.title,
-          slideIndex: 1,
-          type: '課程標題',
-          snippet: `${l.title} - ${l.subtitle || ''}`
-        });
-      }
-
-      // 2. Check slides
-      l.slides.forEach(s => {
-        const joined = (s.textLines || []).join(' ');
-        if (joined.toLowerCase().includes(q)) {
-          hits.push({
-            lessonId: l.id,
-            lessonCode: l.code,
-            lessonTitle: l.title,
-            slideIndex: s.slideIndex,
-            type: `投影片 ${s.slideIndex}`,
-            snippet: extractSnippet(joined, q)
-          });
-        }
-      });
-
-      // 3. Check PDF text
-      if (l.fullPdfText && l.fullPdfText.toLowerCase().includes(q)) {
-        hits.push({
-          lessonId: l.id,
-          lessonCode: l.code,
-          lessonTitle: l.title,
-          slideIndex: 1,
-          type: '講義述說全文',
-          snippet: extractSnippet(l.fullPdfText, q)
-        });
-      }
-    });
-
-    renderSearchResults(hits, q);
-  }
-
-  function extractSnippet(text, query) {
-    const idx = text.toLowerCase().indexOf(query);
-    if (idx === -1) return text.slice(0, 100);
-    const start = Math.max(0, idx - 30);
-    const end = Math.min(text.length, idx + query.length + 50);
-    return (start > 0 ? '...' : '') + text.slice(start, end).replace(/\s+/g, ' ') + (end < text.length ? '...' : '');
-  }
-
-  function renderSearchResults(hits, query) {
-    DOM.searchResultsList.innerHTML = '';
-    DOM.searchResultSummary.textContent = `找到 ${hits.length} 筆符合結果`;
-
-    if (hits.length === 0) {
-      DOM.searchResultsList.innerHTML = `
-        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
-          <i class="fa-solid fa-magnifying-glass" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
-          <p>查無符合「${query}」之內容，請嘗試其他關鍵字</p>
-        </div>
-      `;
+    // P0-2: Escape special regex characters
+    const escapedQ = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let re;
+    try {
+      re = new RegExp(escapedQ, 'gi');
+    } catch (e) {
+      DOM.searchResultSummary.textContent = '搜尋格式錯誤，請輸入一般文字';
       return;
     }
 
-    hits.slice(0, 30).forEach(h => {
-      const item = document.createElement('div');
-      item.className = 'search-result-item';
+    const hits = [];
+    state.lessons.forEach(lesson => {
+      // Search lesson title & subtitle
+      if (re.test(lesson.title) || re.test(lesson.subtitle || '')) {
+        re.lastIndex = 0;
+        hits.push({ type: 'lesson', lesson, title: lesson.title, snippet: lesson.subtitle || lesson.title, slideIdx: 1 });
+      }
+      re.lastIndex = 0;
 
-      const highlightedSnippet = h.snippet.replace(new RegExp(query, 'gi'), match => `<span class="highlight-match">${match}</span>`);
-
-      item.innerHTML = `
-        <div class="search-res-lesson">${h.lessonCode} · ${h.lessonTitle} · <span style="color: var(--text-muted); font-weight: normal;">${h.type}</span></div>
-        <div class="search-res-snippet">${highlightedSnippet}</div>
-      `;
-
-      item.addEventListener('click', () => {
-        closeSearch();
-        loadLesson(h.lessonId, h.slideIndex);
+      // Search slides
+      lesson.slides.forEach((slide, i) => {
+        const slideText = [slide.title, ...(slide.textLines || [])].join(' ');
+        re.lastIndex = 0;
+        if (re.test(slideText)) {
+          hits.push({ type: 'slide', lesson, title: slide.title || `第 ${i+1} 張投影片`, snippet: slideText.slice(0, 120), slideIdx: i + 1 });
+        }
+        re.lastIndex = 0;
       });
 
+      // Search PDF text
+      if (lesson.fullPdfText) {
+        re.lastIndex = 0;
+        const pdfIdx = lesson.fullPdfText.search(re);
+        if (pdfIdx !== -1) {
+          const snippet = lesson.fullPdfText.slice(Math.max(0, pdfIdx - 30), pdfIdx + 100);
+          hits.push({ type: 'pdf', lesson, title: `${lesson.code} 講義`, snippet, slideIdx: 1 });
+        }
+        re.lastIndex = 0;
+      }
+    });
+
+    // Deduplicate by lessonId+slideIdx
+    const seen = new Set();
+    const unique = hits.filter(h => {
+      const key = `${h.lesson.id}:${h.slideIdx}:${h.type}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    DOM.searchResultSummary.textContent = unique.length > 0
+      ? `找到 ${unique.length} 個結果`
+      : '未找到相關內容，請嘗試其他關鍵字';
+
+    DOM.searchResultsList.innerHTML = '';
+    unique.slice(0, 40).forEach(h => {
+      const typeLabel = h.type === 'lesson' ? '課程' : h.type === 'slide' ? '投影片' : '講義';
+
+      let highlightedTitle = escapeHtml(h.title || '');
+      let highlightedSnippet = escapeHtml(h.snippet || '');
+      try {
+        const reH = new RegExp(escapedQ, 'gi');
+        highlightedTitle = highlightedTitle.replace(reH, m => `<mark class="highlight-match">${m}</mark>`);
+        highlightedSnippet = highlightedSnippet.replace(reH, m => `<mark class="highlight-match">${m}</mark>`);
+      } catch(e) { /* ignore */ }
+
+      const item = document.createElement('div');
+      item.className = 'search-result-item';
+      item.setAttribute('role', 'option');
+      item.setAttribute('tabindex', '0');
+      item.setAttribute('aria-label', `${h.lesson.code} ${h.title}`);
+      item.innerHTML = `
+        <div class="search-res-lesson">${escapeHtml(h.lesson.code)} · ${escapeHtml(h.lesson.title)} · ${typeLabel}</div>
+        <div class="search-res-title">${highlightedTitle}</div>
+        <div class="search-res-snippet">${highlightedSnippet}</div>
+      `;
+      const handler = () => {
+        loadLesson(h.lesson.id, h.slideIdx);
+        closeSearch();
+      };
+      item.addEventListener('click', handler);
+      item.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') handler(); });
       DOM.searchResultsList.appendChild(item);
     });
   }
 
-  // --- Practical Tools Modal ---
+  // ─────────────────────────────────────────────
+  //  TOOLKIT MODAL
+  // ─────────────────────────────────────────────
   function openToolkit() {
-    DOM.toolkitModal.classList.add('open');
+    DOM.toolkitModal.style.display = 'flex';
+    trapFocus(DOM.toolkitModal);
+    DOM.closeToolkitModalBtn.focus();
   }
 
   function closeToolkit() {
-    DOM.toolkitModal.classList.remove('open');
+    DOM.toolkitModal.style.display = 'none';
+    releaseFocus();
+    DOM.openToolkitBtn.focus();
   }
 
-  // --- Event Bindings ---
+  // ─────────────────────────────────────────────
+  //  FOCUS TRAP (P2-3)
+  // ─────────────────────────────────────────────
+  let _focusTrapEl = null;
+  let _prevFocusEl = null;
+
+  function trapFocus(el) {
+    _prevFocusEl = document.activeElement;
+    _focusTrapEl = el;
+    el.addEventListener('keydown', handleFocusTrap);
+  }
+
+  function releaseFocus() {
+    if (_focusTrapEl) _focusTrapEl.removeEventListener('keydown', handleFocusTrap);
+    _focusTrapEl = null;
+    if (_prevFocusEl) try { _prevFocusEl.focus(); } catch(e) {}
+  }
+
+  function handleFocusTrap(e) {
+    if (e.key !== 'Tab' || !_focusTrapEl) return;
+    const focusable = Array.from(_focusTrapEl.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )).filter(el => !el.disabled && el.offsetParent !== null);
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  //  PERSONAL NOTES (P2-8)
+  // ─────────────────────────────────────────────
+  function togglePersonalNotes() {
+    state.isNotesOpen = !state.isNotesOpen;
+    DOM.personalNotesToggle.setAttribute('aria-expanded', state.isNotesOpen ? 'true' : 'false');
+    DOM.personalNotesArea.hidden = !state.isNotesOpen;
+    if (state.isNotesOpen) DOM.personalNotesInput.focus();
+  }
+
+  function restorePersonalNotes(lessonId) {
+    const key = `blesseq_note_${lessonId}`;
+    const saved = safeStorage('get', key) || '';
+    DOM.personalNotesInput.value = saved;
+  }
+
+  function savePersonalNote() {
+    const key = `blesseq_note_${state.activeLessonId}`;
+    safeStorage('set', key, DOM.personalNotesInput.value);
+  }
+
+  // ─────────────────────────────────────────────
+  //  PROGRESS TRACKING (P2-4)
+  // ─────────────────────────────────────────────
+  function updateProgress(lessonId, slideIdx) {
+    if (!state.progress[lessonId]) {
+      state.progress[lessonId] = { lastSlide: 0, slideCount: 0 };
+    }
+    state.progress[lessonId].lastSlide = Math.max(state.progress[lessonId].lastSlide, slideIdx);
+    const lesson = state.lessons.find(l => l.id === lessonId);
+    if (lesson) state.progress[lessonId].slideCount = lesson.slideCount;
+    safeStorage('set', 'blesseq_progress', JSON.stringify(state.progress));
+  }
+
+  // ─────────────────────────────────────────────
+  //  SAFE LOCALSTORAGE (P0-7)
+  // ─────────────────────────────────────────────
+  function safeStorage(action, key, value) {
+    try {
+      if (action === 'get') return localStorage.getItem(key);
+      if (action === 'set') localStorage.setItem(key, value);
+    } catch (e) { /* Private browsing / security policy */ }
+    return null;
+  }
+
+  // ─────────────────────────────────────────────
+  //  SAFE CLIPBOARD (P0-7)
+  // ─────────────────────────────────────────────
+  function safeCopy(text, successMsg) {
+    try {
+      navigator.clipboard.writeText(text).then(() => alert(successMsg || '已複製！')).catch(() => {
+        fallbackCopy(text, successMsg);
+      });
+    } catch (e) {
+      fallbackCopy(text, successMsg);
+    }
+  }
+
+  function fallbackCopy(text, successMsg) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      alert(successMsg || '已複製！');
+    } catch(e) {
+      alert('複製失敗，請手動選取文字複製。');
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  //  TOUCH SWIPE GESTURES (P1-13)
+  // ─────────────────────────────────────────────
+  function addSwipe(el) {
+    let startX = 0;
+    let startY = 0;
+    el.addEventListener('touchstart', e => {
+      startX = e.changedTouches[0].screenX;
+      startY = e.changedTouches[0].screenY;
+    }, { passive: true });
+    el.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].screenX - startX;
+      const dy = e.changedTouches[0].screenY - startY;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+        if (dx < 0) setSlide(state.activeSlideIndex + 1, 'next');
+        else setSlide(state.activeSlideIndex - 1, 'prev');
+      }
+    }, { passive: true });
+  }
+
+  // ─────────────────────────────────────────────
+  //  MASK TOGGLE
+  // ─────────────────────────────────────────────
+  function toggleMask() {
+    state.isMasked = !state.isMasked;
+    const isNowMasked = state.isMasked;
+    DOM.maskIcon.className = isNowMasked ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+    DOM.toggleMaskBtn.setAttribute('aria-pressed', isNowMasked ? 'true' : 'false');
+    DOM.toggleMaskBtn.title = isNowMasked ? '揭曉講義解答' : '切換為挖空測驗模式';
+    DOM.toggleMaskRightBtn.innerHTML = isNowMasked
+      ? '<i class="fa-solid fa-eye" aria-hidden="true"></i> <span class="btn-text">顯示解答</span>'
+      : '<i class="fa-solid fa-pen-clip" aria-hidden="true"></i> <span class="btn-text">填空測驗</span>';
+    DOM.toggleMaskRightBtn.setAttribute('aria-pressed', isNowMasked ? 'true' : 'false');
+    updateBlanksDisplay();
+  }
+
+  // ─────────────────────────────────────────────
+  //  BIND EVENTS
+  // ─────────────────────────────────────────────
   function bindEvents() {
-    // Theme Toggle
-    DOM.themeToggleBtn.addEventListener('click', () => {
-      applyTheme(state.theme === 'light' ? 'dark' : 'light');
-    });
+    // Theme & Font
+    DOM.themeToggleBtn.addEventListener('click', cycleTheme);
+    DOM.fontScaleBtn.addEventListener('click', cycleFontScale);
 
-    // Font Scale
-    DOM.fontScaleBtn.addEventListener('click', () => {
-      const nextScale = state.fontScale >= 1.25 ? 0.95 : state.fontScale + 0.1;
-      applyFontScale(Math.round(nextScale * 100) / 100);
-    });
-
-    // Brand Logo Home Click
+    // Brand / Home
     DOM.brandHomeBtn.addEventListener('click', () => {
-      loadLesson('00', 1);
+      loadLesson(state.lessons[0].id, 1);
     });
 
     // Category Tabs
-    DOM.categoryTabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        DOM.categoryTabs.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        state.activeCategory = tab.dataset.filter;
-        renderCurriculumList();
+    DOM.categoryTabs.forEach(btn => {
+      btn.addEventListener('click', () => {
+        DOM.categoryTabs.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-selected', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        state.activeCategory = btn.dataset.filter;
+        renderLessonList();
       });
     });
 
-    // Slide Next / Prev
-    DOM.btnSlidePrev.addEventListener('click', () => setSlide(state.activeSlideIndex - 1));
-    DOM.btnSlideNext.addEventListener('click', () => setSlide(state.activeSlideIndex + 1));
-    DOM.overlayPrevBtn.addEventListener('click', () => setSlide(state.activeSlideIndex - 1));
-    DOM.overlayNextBtn.addEventListener('click', () => setSlide(state.activeSlideIndex + 1));
+    // Slide Controls
+    DOM.btnSlidePrev.addEventListener('click', () => setSlide(state.activeSlideIndex - 1, 'prev'));
+    DOM.btnSlideNext.addEventListener('click', () => setSlide(state.activeSlideIndex + 1, 'next'));
+    DOM.overlayPrevBtn.addEventListener('click', () => setSlide(state.activeSlideIndex - 1, 'prev'));
+    DOM.overlayNextBtn.addEventListener('click', () => setSlide(state.activeSlideIndex + 1, 'next'));
 
-    // Presenter Triggers
+    // Grid View
+    DOM.btnGridView.addEventListener('click', toggleGridView);
+
+    // Presenter
     DOM.startPresenterBtn.addEventListener('click', openPresenter);
     DOM.btnSlideFullscreen.addEventListener('click', openPresenter);
     DOM.closePresenterBtn.addEventListener('click', closePresenter);
-    DOM.presenterPrevBtn.addEventListener('click', () => setSlide(state.activeSlideIndex - 1));
-    DOM.presenterNextBtn.addEventListener('click', () => setSlide(state.activeSlideIndex + 1));
+    DOM.presenterPrevBtn.addEventListener('click', () => setSlide(state.activeSlideIndex - 1, 'prev'));
+    DOM.presenterNextBtn.addEventListener('click', () => setSlide(state.activeSlideIndex + 1, 'next'));
+    DOM.presenterTimerToggle.addEventListener('click', togglePresenterTimer);
 
-    // Next / Prev Lesson
+    // Lesson Prev / Next
     DOM.btnPrevLesson.addEventListener('click', () => {
-      const curIdx = state.lessons.findIndex(l => l.id === state.activeLessonId);
-      if (curIdx > 0) loadLesson(state.lessons[curIdx - 1].id, 1);
+      const cur = state.lessons.findIndex(l => l.id === state.activeLessonId);
+      if (cur > 0) loadLesson(state.lessons[cur - 1].id, 1);
     });
     DOM.btnNextLesson.addEventListener('click', () => {
-      const curIdx = state.lessons.findIndex(l => l.id === state.activeLessonId);
-      if (curIdx < state.lessons.length - 1) loadLesson(state.lessons[curIdx + 1].id, 1);
+      const cur = state.lessons.findIndex(l => l.id === state.activeLessonId);
+      if (cur < state.lessons.length - 1) loadLesson(state.lessons[cur + 1].id, 1);
     });
 
-    // Mask/Reveal Blanks Toggle
-    function toggleMask() {
-      state.isMasked = !state.isMasked;
-      DOM.maskIcon.className = state.isMasked ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
-      DOM.toggleMaskBtn.title = state.isMasked ? '揭曉講義解答' : '切換為挖空測驗模式';
-      DOM.toggleMaskRightBtn.innerHTML = state.isMasked ? '<i class="fa-solid fa-eye"></i> 顯示解答' : '<i class="fa-solid fa-pen-clip"></i> 填空測驗';
-      updateBlanksDisplay();
-    }
+    // Mask / Blanks
     DOM.toggleMaskBtn.addEventListener('click', toggleMask);
     DOM.toggleMaskRightBtn.addEventListener('click', toggleMask);
 
-    // Audio Narration Controls
+    // Audio
     DOM.audioNarrateBtn.addEventListener('click', toggleAudio);
     DOM.audioSpeedSelect.addEventListener('change', e => {
-      state.playbackRate = parseFloat(e.target.value);
+      const newRate = parseFloat(e.target.value);
+      state.playbackRate = newRate;
       if (state.isSpeaking) {
-        startAudio();
+        // Resume from current chunk with new rate (P1-6 fix)
+        window.speechSynthesis.cancel();
+        setTimeout(() => speakChunk(), 80);
       }
     });
 
-    // Search Controls
+    // Search
     DOM.openSearchBtn.addEventListener('click', openSearch);
     DOM.closeSearchModalBtn.addEventListener('click', closeSearch);
-    DOM.searchModal.addEventListener('click', e => {
-      if (e.target === DOM.searchModal) closeSearch();
-    });
-    DOM.globalSearchInput.addEventListener('input', e => {
-      handleSearch(e.target.value);
-    });
+    DOM.searchModal.addEventListener('click', e => { if (e.target === DOM.searchModal) closeSearch(); });
+    DOM.globalSearchInput.addEventListener('input', e => handleSearch(e.target.value));
 
-    // Toolkit Modal
+    // Toolkit
     DOM.openToolkitBtn.addEventListener('click', openToolkit);
     DOM.closeToolkitModalBtn.addEventListener('click', closeToolkit);
-    DOM.toolkitModal.addEventListener('click', e => {
-      if (e.target === DOM.toolkitModal) closeToolkit();
-    });
+    DOM.toolkitModal.addEventListener('click', e => { if (e.target === DOM.toolkitModal) closeToolkit(); });
 
-    // Toolkit Tabs
+    // Toolkit Tabs (P2-2: ARIA tabs)
     DOM.toolTabTestimony.addEventListener('click', () => {
       DOM.toolTabTestimony.classList.add('active');
+      DOM.toolTabTestimony.setAttribute('aria-selected', 'true');
       DOM.toolTabBest.classList.remove('active');
-      DOM.testimonyToolContent.style.display = 'flex';
-      DOM.bestToolContent.style.display = 'none';
+      DOM.toolTabBest.setAttribute('aria-selected', 'false');
+      DOM.testimonyToolContent.hidden = false;
+      DOM.bestToolContent.hidden = true;
     });
     DOM.toolTabBest.addEventListener('click', () => {
       DOM.toolTabBest.classList.add('active');
+      DOM.toolTabBest.setAttribute('aria-selected', 'true');
       DOM.toolTabTestimony.classList.remove('active');
-      DOM.testimonyToolContent.style.display = 'none';
-      DOM.bestToolContent.style.display = 'flex';
+      DOM.toolTabTestimony.setAttribute('aria-selected', 'false');
+      DOM.bestToolContent.hidden = false;
+      DOM.testimonyToolContent.hidden = true;
     });
 
-    // Copy Testimony
+    // Copy Testimony (P0-7 safe clipboard)
     DOM.copyTestimonyBtn.addEventListener('click', () => {
       const b = DOM.testimonyBefore.value.trim();
       const t = DOM.testimonyTurning.value.trim();
       const a = DOM.testimonyAfter.value.trim();
-      const full = `【我的信主見證】\n\n一、信主前：\n${b || '（尚未填寫）'}\n\n二、轉折點：\n${t || '（尚未填寫）'}\n\n三、信主後的改變：\n${a || '（尚未填寫）'}\n\n願一切榮耀頌讚都歸給愛我們的主耶穌！`;
-      navigator.clipboard.writeText(full).then(() => {
-        alert('見證講稿已成功複製到剪貼簿！');
-      });
+      const full = `【我的信主見證】\n\n一、信主前：\n${b||'（尚未填寫）'}\n\n二、轉折點：\n${t||'（尚未填寫）'}\n\n三、信主後的改變：\n${a||'（尚未填寫）'}\n\n願一切榮耀頌讚都歸給愛我們的主耶穌！`;
+      safeCopy(full, '見證講稿已成功複製到剪貼簿！');
     });
 
     DOM.clearTestimonyBtn.addEventListener('click', () => {
@@ -793,59 +1203,67 @@
       }
     });
 
-    // Copy Lecture Summary
+    // Copy Lecture
     DOM.lectureCopyBtn.addEventListener('click', () => {
-      const text = DOM.lectureScrollContent.innerText;
-      navigator.clipboard.writeText(text).then(() => {
-        alert('講義重點與述說內容已成功複製！');
-      });
+      safeCopy(DOM.lectureScrollContent.innerText, '講義重點與述說內容已成功複製！');
     });
 
-    // Global Keyboard Shortcuts
+    // Personal Notes (P2-8)
+    DOM.personalNotesToggle.addEventListener('click', togglePersonalNotes);
+    DOM.personalNotesInput.addEventListener('input', savePersonalNote);
+
+    // Swipe Gestures (P1-13)
+    addSwipe(DOM.slideStageMain);
+    addSwipe(document.getElementById('presenterBody'));
+
+    // Keyboard Shortcuts
     document.addEventListener('keydown', e => {
-      // Ignore if typing in text inputs or textareas
-      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
+      // Allow typing in inputs
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
         if (e.key === 'Escape') {
-          closeSearch();
-          closeToolkit();
+          if (DOM.searchModal.style.display !== 'none') closeSearch();
+          if (DOM.toolkitModal.style.display !== 'none') closeToolkit();
         }
         return;
       }
 
       switch (e.key) {
         case 'ArrowLeft':
-          setSlide(state.activeSlideIndex - 1);
+          setSlide(state.activeSlideIndex - 1, 'prev');
           break;
         case 'ArrowRight':
-        case ' ':
-          e.preventDefault();
-          setSlide(state.activeSlideIndex + 1);
+          setSlide(state.activeSlideIndex + 1, 'next');
           break;
-        case 'f':
-        case 'F':
+        case ' ':
+          // P1-4 FIX: Space only advances slides in presenter mode
           if (state.isPresenterOpen) {
-            closePresenter();
-          } else {
-            openPresenter();
+            e.preventDefault();
+            setSlide(state.activeSlideIndex + 1, 'next');
           }
+          break;
+        case 'f': case 'F':
+          if (!e.ctrlKey && !e.metaKey) {
+            state.isPresenterOpen ? closePresenter() : openPresenter();
+          }
+          break;
+        case 'g': case 'G':
+          if (!e.ctrlKey && !e.metaKey) toggleGridView();
           break;
         case 'Escape':
           if (state.isPresenterOpen) closePresenter();
-          closeSearch();
-          closeToolkit();
+          if (DOM.searchModal.style.display !== 'none') closeSearch();
+          if (DOM.toolkitModal.style.display !== 'none') closeToolkit();
           break;
-        case 'k':
-        case 'K':
-          if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            openSearch();
-          }
+        case 'k': case 'K':
+          if (e.ctrlKey || e.metaKey) { e.preventDefault(); openSearch(); }
           break;
       }
     });
   }
 
-  // Auto Start
+  // ─────────────────────────────────────────────
+  //  AUTO START
+  // ─────────────────────────────────────────────
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
