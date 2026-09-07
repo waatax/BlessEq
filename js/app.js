@@ -29,9 +29,10 @@
     isPresenterOpen: false,
     isGridOpen: false,
     isNotesOpen: false,
-    synthChunks: [],
-    synthChunkIdx: 0,
-    isSpeaking: false,
+    // V3: Section-level micro-narration audio state
+    activeSectionId: null,
+    isSectionSpeaking: false,
+    autoAdvance: false,
     playbackRate: 1.0,
     timerRunning: false,
     timerSeconds: 0,
@@ -67,7 +68,10 @@
     audioIcon: $('audioIcon'),
     audioStatusText: $('audioStatusText'),
     audioDetailText: $('audioDetailText'),
+    audioAutoAdvanceBtn: $('audioAutoAdvanceBtn'),
+    autoAdvanceText: $('autoAdvanceText'),
     audioSpeedSelect: $('audioSpeedSelect'),
+    sectionNavPills: $('sectionNavPills'),
 
     currentSlideNum: $('currentSlideNum'),
     totalSlideNum: $('totalSlideNum'),
@@ -257,7 +261,7 @@
     const lesson = state.lessons.find(l => l.id === lessonId);
     if (!lesson) return;
 
-    stopAudio();
+    stopSectionAudio();
     state.activeLessonId = lessonId;
     state.activeSlideIndex = Math.max(1, Math.min(slideIdx, lesson.slideCount));
 
@@ -483,13 +487,14 @@
   }
 
   // ─────────────────────────────────────────────
-  //  LECTURE NARRATIVE (Right Pane)
+  //  LECTURE NARRATIVE (Right Pane - V3 Editorial Cards)
   // ─────────────────────────────────────────────
   function renderLectureNarrative(lesson) {
     DOM.lectureScrollContent.innerHTML = '';
-    const fullText = lesson.fullPdfText || '';
+    if (DOM.sectionNavPills) DOM.sectionNavPills.innerHTML = '';
 
-    if (!fullText || fullText.trim().length < 10) {
+    const sections = lesson.sections || [];
+    if (sections.length === 0) {
       DOM.lectureScrollContent.innerHTML = `
         <div style="padding:2rem;text-align:center;color:var(--text-muted);">
           <i class="fa-solid fa-book-open" style="font-size:2.5rem;margin-bottom:1rem;color:var(--gold-primary);"></i>
@@ -498,77 +503,126 @@
       return;
     }
 
-    let htmlBuffer = '';
-
-    // Course Goals
-    const goalsMatch = fullText.match(/【課程目標】([\s\S]*?)(?=【|一、|\d+\.|$)/);
-    if (goalsMatch && goalsMatch[1].trim()) {
-      htmlBuffer += `
-        <div class="teaching-section" data-section-title="課程目標">
-          <h4><i class="fa-solid fa-bullseye text-gold" aria-hidden="true"></i> 課程目標</h4>
-          <div class="teaching-text" style="font-weight:500;color:var(--text-primary);">
-            ${formatLectureParagraph(goalsMatch[1].trim(), lesson)}
-          </div>
-        </div>`;
+    // 1. Render Mini-TOC Nav Pills
+    if (DOM.sectionNavPills) {
+      sections.forEach((sec, idx) => {
+        const pill = document.createElement('button');
+        pill.className = `section-nav-pill${idx === 0 ? ' active' : ''}`;
+        pill.setAttribute('role', 'tab');
+        pill.setAttribute('aria-selected', idx === 0 ? 'true' : 'false');
+        pill.id = `nav-pill-${sec.id}`;
+        pill.title = `${sec.tag}: ${sec.title}`;
+        pill.innerHTML = `<i class="fa-solid fa-bookmark text-gold" style="font-size:0.7em;"></i> <span>${escapeHtml(sec.num)}. ${escapeHtml(sec.title.slice(0, 10))}</span>`;
+        pill.addEventListener('click', () => {
+          DOM.sectionNavPills.querySelectorAll('.section-nav-pill').forEach(p => {
+            p.classList.remove('active');
+            p.setAttribute('aria-selected', 'false');
+          });
+          pill.classList.add('active');
+          pill.setAttribute('aria-selected', 'true');
+          const card = $(`card-${sec.id}`);
+          if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        DOM.sectionNavPills.appendChild(pill);
+      });
     }
 
-    // Key Scriptures — match 【...書|記|篇|音|徒|羅|林...】
-    const scriptureRegex = /【([^】]{2,40}(?:書|記|篇|音|徒|羅|林|加|弗|腓|西|帖|太|可|路|約|撒|王|代|尼|拉|哈|彌|鴻|番|該|亞|瑪|提|多|門|希|雅|彼|猶|啟)[^】]{0,30})】([\s\S]*?)(?=【|[一二三四五六七八九十]、|\d+\.|$)/g;
-    let sMatch;
-    let sCount = 0;
-    while ((sMatch = scriptureRegex.exec(fullText)) !== null && sCount < 4) {
-      const cite = sMatch[1].trim();
-      const verseText = sMatch[2].trim().replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ');
-      if (verseText.length > 5 && verseText.length < 400) {
-        htmlBuffer += `
-          <div class="scripture-card" data-section-title="${cite}">
-            <div class="scripture-citation">
-              <i class="fa-solid fa-book-bible text-gold" aria-hidden="true"></i> 【${escapeHtml(cite)}】
-            </div>
-            <div class="scripture-text">「${escapeHtml(verseText)}」</div>
-          </div>`;
-        sCount++;
+    // 2. Render Curated Study Section Cards
+    sections.forEach((sec, idx) => {
+      const card = document.createElement('article');
+      card.className = 'study-section-card';
+      card.id = `card-${sec.id}`;
+      card.dataset.sectionId = sec.id;
+      card.dataset.sectionNum = sec.num;
+      card.dataset.sectionTitle = sec.title;
+
+      // Header Bar: Tag badge + Num + Discrete Micro-Audio Button
+      const headerBar = document.createElement('div');
+      headerBar.className = 'section-header-bar';
+      headerBar.innerHTML = `
+        <div class="section-badge-group">
+          <span class="section-badge-tag">${escapeHtml(sec.tag || '研讀要點')}</span>
+          <span class="section-badge-num">PART ${escapeHtml(sec.num)}</span>
+        </div>
+        <button class="section-audio-btn" type="button" id="btn-audio-${sec.id}"
+                aria-label="播放或暫停本段語音導讀，預估時長 ${sec.durationEstimate || '約 45 秒'}"
+                title="聆聽此段重點導讀">
+          <i class="fa-solid fa-play" id="icon-audio-${sec.id}" aria-hidden="true"></i>
+          <span id="text-audio-${sec.id}">聆聽此段 · ${escapeHtml(sec.durationEstimate || '約 45 秒')}</span>
+        </button>
+      `;
+
+      // Bind micro-audio button click
+      const audioBtn = headerBar.querySelector('.section-audio-btn');
+      audioBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSectionAudio(sec.id);
+      });
+
+      card.appendChild(headerBar);
+
+      // Section Title
+      const titleEl = document.createElement('h4');
+      titleEl.className = 'section-title-heading';
+      titleEl.textContent = `${sec.num}、${sec.title}`;
+      card.appendChild(titleEl);
+
+      // Scripture Callout (if available)
+      if (sec.scripture && sec.scripture.text) {
+        const scriptureCard = document.createElement('div');
+        scriptureCard.className = 'scripture-card';
+        scriptureCard.innerHTML = `
+          <div class="scripture-citation">
+            <i class="fa-solid fa-book-bible text-gold" aria-hidden="true"></i> 【${escapeHtml(sec.scripture.citation)}】
+          </div>
+          <div class="scripture-text">「${escapeHtml(sec.scripture.text)}」</div>
+        `;
+        card.appendChild(scriptureCard);
       }
-    }
 
-    // Outline sections: 一、 二、 三、 ...
-    const sectionRegex = /([一二三四五六七八九十]、[^\n]+)/g;
-    const parts = fullText.split(sectionRegex);
+      // Paragraphs / Subpoints with Interactive Fill-in Blanks
+      if (sec.paragraphs && sec.paragraphs.length > 0) {
+        const pointsList = document.createElement('ul');
+        pointsList.className = 'section-points-list';
+        sec.paragraphs.forEach(p => {
+          const li = document.createElement('li');
+          li.className = 'section-point-item';
+          li.innerHTML = formatLectureParagraph(p, lesson);
+          pointsList.appendChild(li);
+        });
+        card.appendChild(pointsList);
+      }
 
-    for (let i = 1; i < parts.length; i += 2) {
-      const secTitle = parts[i].trim();
-      const secBody = (parts[i + 1] || '').trim();
-      htmlBuffer += `
-        <div class="teaching-section" data-section-title="${escapeHtml(secTitle)}">
-          <h4>${escapeHtml(secTitle)}</h4>
-          <div class="teaching-text">
-            ${formatLectureParagraph(secBody, lesson)}
+      // Golden Quote Box (Key Insight Takeaway)
+      if (sec.goldenQuote && sec.goldenQuote.trim()) {
+        const quoteBox = document.createElement('div');
+        quoteBox.className = 'golden-quote-box';
+        quoteBox.innerHTML = `
+          <i class="fa-solid fa-lightbulb" aria-hidden="true"></i>
+          <div>
+            <strong style="color:var(--gold-primary);font-size:0.8rem;display:block;margin-bottom:0.2rem;letter-spacing:0.04em;">核心心法提要</strong>
+            <span>${escapeHtml(sec.goldenQuote)}</span>
           </div>
-        </div>`;
-    }
+        `;
+        card.appendChild(quoteBox);
+      }
 
-    if (parts.length <= 1) {
-      htmlBuffer += `
-        <div class="teaching-section" data-section-title="講義核心述說">
-          <h4>講義核心述說</h4>
-          <div class="teaching-text">
-            ${formatLectureParagraph(fullText, lesson)}
-          </div>
-        </div>`;
-    }
+      DOM.lectureScrollContent.appendChild(card);
+    });
 
-    // Reflection box
-    htmlBuffer += `
-      <div class="reflection-box">
-        <h4><i class="fa-solid fa-comments" aria-hidden="true"></i> 課後反思與小組實作操練</h4>
-        <ul>
-          <li>默想本課核心經文，哪一句話最觸動你此時此刻的心境？</li>
-          <li>在實際服事或日常生活中，本課觀念如何幫助你突破目前的瓶頸？</li>
-          <li>與幸福小組同工彼此代禱，並寫下具體的實踐行動清單。</li>
-        </ul>
-      </div>`;
+    // Small Group Reflection Workshop Box at the end
+    const reflectionCard = document.createElement('div');
+    reflectionCard.className = 'reflection-box';
+    reflectionCard.innerHTML = `
+      <h4><i class="fa-solid fa-comments text-gold" aria-hidden="true"></i> 課後反思與小組實作操練</h4>
+      <ul>
+        <li>默想本課核心經文，哪一句話最觸動你此時此刻的心境？</li>
+        <li>在實際服事或日常生活中，本課觀念如何幫助你突破目前的瓶頸？</li>
+        <li>與幸福小組同工彼此代禱，並寫下具體的實踐行動清單。</li>
+      </ul>
+    `;
+    DOM.lectureScrollContent.appendChild(reflectionCard);
 
-    DOM.lectureScrollContent.innerHTML = htmlBuffer;
     updateBlanksDisplay();
   }
 
@@ -710,111 +764,190 @@
   }
 
   // ─────────────────────────────────────────────
-  //  AUDIO NARRATION (P1-6: chunked, Chrome GC fix)
+  //  SECTION-LEVEL MICRO-AUDIO CONTROLLER (V3)
   // ─────────────────────────────────────────────
-  function toggleAudio() {
+  function toggleSectionAudio(secId) {
     if (!('speechSynthesis' in window)) {
       alert('您的瀏覽器不支援語音合成功能，建議使用 Chrome / Edge 瀏覽器。');
       return;
     }
-    state.isSpeaking ? stopAudio() : startAudio();
+    if (state.activeSectionId === secId && state.isSectionSpeaking) {
+      stopSectionAudio();
+    } else {
+      playSectionAudio(secId);
+    }
   }
 
-  function startAudio() {
+  function playSectionAudio(secId, isAutoAdvance = false) {
     const lesson = state.lessons.find(l => l.id === state.activeLessonId);
-    if (!lesson) return;
-    window.speechSynthesis.cancel();
+    if (!lesson || !lesson.sections) return;
 
-    const rawText = `${lesson.title}。${lesson.subtitle || ''}。` +
-      DOM.lectureScrollContent.innerText
-        .replace(/[•？\n]+/g, '，')
-        .replace(/，+/g, '，')
-        .replace(/\s+/g, ' ')
-        .trim();
+    const sec = lesson.sections.find(s => s.id === secId);
+    if (!sec) return;
 
-    // Split into ~400 char chunks at sentence boundaries
-    state.synthChunks = splitTextToChunks(rawText, 400);
-    state.synthChunkIdx = 0;
-    state.isSpeaking = true;
+    // Stop any currently running speech
+    stopSectionAudio(false);
 
+    state.activeSectionId = secId;
+    state.isSectionSpeaking = true;
+
+    // Visual highlight on card with golden breathing glow
+    const card = $(`card-${secId}`);
+    if (card) {
+      card.classList.add('speaking');
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Sync Mini-TOC active pill
+    if (DOM.sectionNavPills) {
+      DOM.sectionNavPills.querySelectorAll('.section-nav-pill').forEach((p, idx) => {
+        const isTarget = lesson.sections[idx] && lesson.sections[idx].id === secId;
+        p.classList.toggle('active', isTarget);
+        p.setAttribute('aria-selected', isTarget ? 'true' : 'false');
+        if (isTarget) p.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      });
+    }
+
+    // Update Section Audio Pill button
+    const btn = $(`btn-audio-${secId}`);
+    const icon = $(`icon-audio-${secId}`);
+    const text = $(`text-audio-${secId}`);
+    if (btn) {
+      btn.classList.add('playing');
+      if (icon) icon.className = 'fa-solid fa-pause';
+      if (text) text.textContent = '導讀中 · 點擊暫停';
+    }
+
+    // Update Top Audio Narrator Bar
     DOM.audioIcon.className = 'fa-solid fa-pause';
     DOM.audioNarrateBtn.classList.add('playing');
-    DOM.audioStatusText.textContent = '語音朗讀中...';
-    DOM.audioDetailText.textContent = '點擊暫停';
+    DOM.audioStatusText.textContent = `正在導讀：${sec.num} · ${sec.title}`;
+    DOM.audioDetailText.textContent = `時長 ${sec.durationEstimate} · 點擊暫停`;
 
-    speakChunk();
+    // Utterance with natural punctuation pacing
+    const scriptToRead = sec.narrationScript || `${sec.title}。${sec.summary}`;
+    const utterance = new SpeechSynthesisUtterance(scriptToRead);
+    utterance.lang = 'zh-TW';
+    utterance.rate = state.playbackRate;
 
-    // Chrome GC keepalive (P1-6)
+    const setVoice = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const zhVoice = voices.find(v => v.lang === 'zh-TW') || voices.find(v => v.lang.startsWith('zh'));
+      if (zhVoice) utterance.voice = zhVoice;
+    };
+    if (window.speechSynthesis.getVoices().length > 0) setVoice();
+    else window.speechSynthesis.addEventListener('voiceschanged', setVoice, { once: true });
+
+    utterance.onend = () => {
+      onSectionAudioEnded(secId);
+    };
+
+    utterance.onerror = () => {
+      stopSectionAudio();
+    };
+
+    // Chrome GC keepalive
+    clearInterval(state.speechKeepAliveInterval);
     state.speechKeepAliveInterval = setInterval(() => {
       if (window.speechSynthesis.speaking) {
         window.speechSynthesis.pause();
         window.speechSynthesis.resume();
       }
     }, 10000);
-  }
 
-  function splitTextToChunks(text, maxLen) {
-    const chunks = [];
-    let remaining = text;
-    while (remaining.length > 0) {
-      if (remaining.length <= maxLen) { chunks.push(remaining); break; }
-      let cutAt = maxLen;
-      // Find last sentence boundary within maxLen
-      const sentenceEnd = remaining.slice(0, maxLen).lastIndexOf('。');
-      if (sentenceEnd > 50) cutAt = sentenceEnd + 1;
-      else {
-        const commaEnd = remaining.slice(0, maxLen).lastIndexOf('，');
-        if (commaEnd > 50) cutAt = commaEnd + 1;
-      }
-      chunks.push(remaining.slice(0, cutAt));
-      remaining = remaining.slice(cutAt).trim();
-    }
-    return chunks;
-  }
-
-  function speakChunk() {
-    if (!state.isSpeaking || state.synthChunkIdx >= state.synthChunks.length) {
-      stopAudio();
-      return;
-    }
-
-    const text = state.synthChunks[state.synthChunkIdx];
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'zh-TW';
-    utterance.rate = state.playbackRate;
-
-    // Voice selection — wait for voices (P1-6)
-    const setVoice = () => {
-      const voices = window.speechSynthesis.getVoices();
-      const zhVoice = voices.find(v => v.lang === 'zh-TW') || voices.find(v => v.lang.startsWith('zh'));
-      if (zhVoice) utterance.voice = zhVoice;
-    };
-
-    if (window.speechSynthesis.getVoices().length > 0) {
-      setVoice();
-    } else {
-      window.speechSynthesis.addEventListener('voiceschanged', setVoice, { once: true });
-    }
-
-    utterance.onend = () => {
-      state.synthChunkIdx++;
-      speakChunk();
-    };
-
-    utterance.onerror = () => stopAudio();
     window.speechSynthesis.speak(utterance);
   }
 
-  function stopAudio() {
-    state.isSpeaking = false;
-    state.synthChunks = [];
-    state.synthChunkIdx = 0;
-    window.speechSynthesis.cancel();
+  function onSectionAudioEnded(secId) {
+    const lesson = state.lessons.find(l => l.id === state.activeLessonId);
+    const card = $(`card-${secId}`);
+    if (card) card.classList.remove('speaking');
+
+    const btn = $(`btn-audio-${secId}`);
+    const icon = $(`icon-audio-${secId}`);
+    const text = $(`text-audio-${secId}`);
+    if (btn) {
+      btn.classList.remove('playing');
+      const sec = lesson ? lesson.sections.find(s => s.id === secId) : null;
+      if (icon) icon.className = 'fa-solid fa-rotate-right';
+      if (text) text.textContent = `重新聆聽 · ${sec ? sec.durationEstimate : ''}`;
+    }
+
+    state.isSectionSpeaking = false;
     clearInterval(state.speechKeepAliveInterval);
+
+    // If Auto-Advance is enabled, advance to next section smoothly
+    if (state.autoAdvance && lesson && lesson.sections) {
+      const curIdx = lesson.sections.findIndex(s => s.id === secId);
+      if (curIdx >= 0 && curIdx < lesson.sections.length - 1) {
+        const nextSec = lesson.sections[curIdx + 1];
+        setTimeout(() => {
+          playSectionAudio(nextSec.id, true);
+        }, 700);
+        return;
+      }
+    }
+
+    // Reset Top Narrator Bar
     DOM.audioIcon.className = 'fa-solid fa-volume-high';
     DOM.audioNarrateBtn.classList.remove('playing');
     DOM.audioStatusText.textContent = '講義述說語音導讀';
-    DOM.audioDetailText.textContent = '點擊播放聆聽本課講義全文';
+    DOM.audioDetailText.textContent = '點擊段落播放按鈕開始聆聽';
+    state.activeSectionId = null;
+  }
+
+  function stopSectionAudio(resetTopBar = true) {
+    window.speechSynthesis.cancel();
+    clearInterval(state.speechKeepAliveInterval);
+
+    if (state.activeSectionId) {
+      const prevCard = $(`card-${state.activeSectionId}`);
+      if (prevCard) prevCard.classList.remove('speaking');
+
+      const prevBtn = $(`btn-audio-${state.activeSectionId}`);
+      const prevIcon = $(`icon-audio-${state.activeSectionId}`);
+      const prevText = $(`text-audio-${state.activeSectionId}`);
+      if (prevBtn) {
+        prevBtn.classList.remove('playing');
+        const lesson = state.lessons.find(l => l.id === state.activeLessonId);
+        const sec = lesson ? lesson.sections.find(s => s.id === state.activeSectionId) : null;
+        if (prevIcon) prevIcon.className = 'fa-solid fa-play';
+        if (prevText) prevText.textContent = `聆聽此段 · ${sec ? sec.durationEstimate : ''}`;
+      }
+    }
+
+    state.isSectionSpeaking = false;
+    if (resetTopBar) {
+      state.activeSectionId = null;
+      DOM.audioIcon.className = 'fa-solid fa-volume-high';
+      DOM.audioNarrateBtn.classList.remove('playing');
+      DOM.audioStatusText.textContent = '講義述說語音導讀';
+      DOM.audioDetailText.textContent = '點擊段落播放按鈕開始聆聽';
+    }
+  }
+
+  function toggleAutoAdvance() {
+    state.autoAdvance = !state.autoAdvance;
+    if (DOM.audioAutoAdvanceBtn) {
+      DOM.audioAutoAdvanceBtn.classList.toggle('active', state.autoAdvance);
+      DOM.audioAutoAdvanceBtn.setAttribute('aria-pressed', state.autoAdvance ? 'true' : 'false');
+    }
+    if (DOM.autoAdvanceText) {
+      DOM.autoAdvanceText.textContent = `自動連播: ${state.autoAdvance ? '開' : '關'}`;
+    }
+  }
+
+  // Master Audio Toggle on Top Banner Bar
+  function toggleMasterAudio() {
+    const lesson = state.lessons.find(l => l.id === state.activeLessonId);
+    if (!lesson || !lesson.sections || lesson.sections.length === 0) return;
+
+    if (state.isSectionSpeaking) {
+      stopSectionAudio();
+    } else {
+      const targetSecId = state.activeSectionId || lesson.sections[0].id;
+      playSectionAudio(targetSecId);
+    }
   }
 
   // ─────────────────────────────────────────────
@@ -1145,15 +1278,16 @@
     DOM.toggleMaskBtn.addEventListener('click', toggleMask);
     DOM.toggleMaskRightBtn.addEventListener('click', toggleMask);
 
-    // Audio
-    DOM.audioNarrateBtn.addEventListener('click', toggleAudio);
+    // Audio (V3 Section Audio & Auto-Advance)
+    DOM.audioNarrateBtn.addEventListener('click', toggleMasterAudio);
+    if (DOM.audioAutoAdvanceBtn) {
+      DOM.audioAutoAdvanceBtn.addEventListener('click', toggleAutoAdvance);
+    }
     DOM.audioSpeedSelect.addEventListener('change', e => {
       const newRate = parseFloat(e.target.value);
       state.playbackRate = newRate;
-      if (state.isSpeaking) {
-        // Resume from current chunk with new rate (P1-6 fix)
-        window.speechSynthesis.cancel();
-        setTimeout(() => speakChunk(), 80);
+      if (state.isSectionSpeaking && state.activeSectionId) {
+        playSectionAudio(state.activeSectionId);
       }
     });
 

@@ -147,6 +147,10 @@
             <strong id="audioStatusText">講義述說語音導讀</strong>
             <span class="audio-detail-text" id="audioDetailText">點擊播放聆聽本課講義全文</span>
           </div>
+          <button class="audio-auto-advance-btn" id="audioAutoAdvanceBtn" type="button" aria-pressed="false" title="切換是否自動連續播放下一段講義">
+            <i class="fa-solid fa-forward-step" aria-hidden="true"></i>
+            <span id="autoAdvanceText">自動連播: 關</span>
+          </button>
           <label class="audio-speed-label" for="audioSpeedSelect" class="sr-only">語音朗讀速度</label>
           <select class="audio-speed-select" id="audioSpeedSelect" aria-label="選擇語音朗讀速度">
             <option value="0.8">0.8x 緩速</option>
@@ -237,6 +241,9 @@
                 <i class="fa-solid fa-pen-clip" aria-hidden="true"></i> <span class="btn-text">填空測驗</span>
               </button>
             </div>
+          <!-- Section Mini-TOC Nav Pills (V3: Biblia Sacred Study Navigator) -->
+          <div class="section-nav-pills" id="sectionNavPills" role="tablist" aria-label="講義章節微導航">
+            <!-- Dynamically populated section pills -->
           </div>
 
           <!-- Lecture Scrollable Narrative -->
