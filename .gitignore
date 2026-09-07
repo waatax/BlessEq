@@ -1,0 +1,14 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Temporary and log files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Gemini assistant metadata
+.gemini/

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>BlessEq 幸福門訓裝備系統 · 門下研經寶典</title>
+  <meta name="description" content="幸福門訓門徒學校(下)全套 17 門裝備課程，包含 413 張高畫質講義投影片、門下講義深度述說教學、互動挖空測驗與實作秘笈。">
+  <meta name="theme-color" content="#FAF7F2">
+  
+  <!-- Google Fonts: Noto Serif TC, Noto Sans TC, Cinzel -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Sans+TC:wght@300;400;500;600;700&family=Noto+Serif+TC:wght@400;600;700;900&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Free Icons (CDN) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- Biblia Sacred Design System CSS -->
+  <link rel="stylesheet" href="css/biblia.css">
+</head>
+<body>
+
+  <!-- Top Header Navigation -->
+  <header class="biblia-header">
+    <div class="header-container">
+      <!-- Brand Logo -->
+      <div class="brand" id="brandHomeBtn" title="返回總覽首頁">
+        <div class="brand-icon">
+          <i class="fa-solid fa-cross"></i>
+        </div>
+        <div class="brand-info">
+          <h1>
+            BlessEq
+            <span class="brand-badge">幸福門訓 · 門下</span>
+          </h1>
+          <p>413 篇投影片 · 17 門講義述說寶典 · Biblia 聖言研讀系統</p>
+        </div>
+      </div>
+
+      <!-- Quick Search Input Trigger -->
+      <div class="search-trigger" id="openSearchBtn" title="搜尋全站課程、經文、填空 (Ctrl+K)">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span>搜尋全套 17 門課程、經文與講義...</span>
+        <span class="kbd-shortcut">Ctrl K</span>
+      </div>
+
+      <!-- Header Action Controls -->
+      <div class="header-actions">
+        <!-- Practical Tools Modal Trigger -->
+        <button class="btn-secondary" id="openToolkitBtn" title="開啟實作秘笈工具箱">
+          <i class="fa-solid fa-toolbox text-gold"></i>
+          <span>實作工具</span>
+        </button>
+
+        <!-- Presenter Fullscreen Mode Trigger -->
+        <button class="btn-primary" id="startPresenterBtn" title="進入講員全螢幕投影演講模式 (F)">
+          <i class="fa-solid fa-desktop"></i>
+          <span>講員投影</span>
+        </button>
+
+        <!-- Mask Blanks Toggle -->
+        <button class="btn-icon" id="toggleMaskBtn" title="切換講義重點「挖空測驗 / 顯示解答」模式">
+          <i class="fa-solid fa-eye-slash" id="maskIcon"></i>
+        </button>
+
+        <!-- Font Size Scale -->
+        <button class="btn-icon" id="fontScaleBtn" title="放大閱讀字體">
+          <i class="fa-solid fa-font"></i>
+        </button>
+
+        <!-- Theme Toggle (Parchment / Obsidian) -->
+        <button class="btn-icon" id="themeToggleBtn" title="切換黑夜/羊皮紙白天風格">
+          <i class="fa-solid fa-moon" id="themeIcon"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Category Filter Bar -->
+  <nav class="curriculum-tabs-bar">
+    <div class="tabs-inner">
+      <button class="tab-btn active" data-filter="all">
+        <i class="fa-solid fa-layer-group"></i> 全部課程 (17)
+      </button>
+      <button class="tab-btn" data-filter="overview">
+        <i class="fa-solid fa-compass"></i> 門訓總攬 (00)
+      </button>
+      <button class="tab-btn" data-filter="core">
+        <i class="fa-solid fa-book-bible"></i> 門徒成長必修 (01-12)
+      </button>
+      <button class="tab-btn" data-filter="practical">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> 幸福小組實作秘笈 (01-04)
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Application Layout -->
+  <div class="app-layout">
+    
+    <!-- Left Sidebar: Curriculum List -->
+    <aside class="sidebar-curriculum">
+      <div class="sidebar-header">
+        <div class="sidebar-title">
+          <i class="fa-solid fa-scroll text-gold"></i>
+          <span>裝備課程目錄</span>
+        </div>
+        <span class="brand-badge" id="lessonCountBadge">17 門課</span>
+      </div>
+      <div class="lessons-list" id="lessonsContainer">
+        <!-- Dynamically rendered by app.js -->
+      </div>
+    </aside>
+
+    <!-- Right Workspace: Content Stage -->
+    <main class="content-workspace" id="mainWorkspace">
+      
+      <!-- Lesson Top Banner -->
+      <section class="lesson-banner" id="lessonBanner">
+        <div class="banner-accent"></div>
+        <div class="banner-top">
+          <div class="banner-category" id="bannerCategory">
+            <i class="fa-solid fa-bookmark"></i>
+            <span>門徒必修課程</span>
+          </div>
+          <div class="banner-controls">
+            <button class="btn-secondary" id="btnPrevLesson" title="上一課">
+              <i class="fa-solid fa-arrow-left"></i> 上一課
+            </button>
+            <button class="btn-secondary" id="btnNextLesson" title="下一課">
+              下一課 <i class="fa-solid fa-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+
+        <h2 class="banner-title" id="bannerTitle">為主作榮耀的見證</h2>
+        <p class="banner-subtitle" id="bannerSubtitle">生命故事與福音大能 · 使徒行傳二十二章15節</p>
+
+        <!-- Audio Narration Bar -->
+        <div class="audio-narrator-bar">
+          <button class="audio-btn" id="audioNarrateBtn" title="播放/暫停本課講義語音述說導讀">
+            <i class="fa-solid fa-volume-high" id="audioIcon"></i>
+          </button>
+          <div class="audio-info">
+            <strong id="audioStatusText">講義述說語音導讀</strong>
+            <span style="opacity: 0.75; font-size: 0.75rem; margin-left: 0.5rem;" id="audioDetailText">點擊播放聆聽本課講義全文</span>
+          </div>
+          <select class="audio-speed-select" id="audioSpeedSelect" title="語音朗讀速度">
+            <option value="1">1.0x 語速</option>
+            <option value="1.2">1.2x 語速</option>
+            <option value="1.5">1.5x 語速</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- Dual Pane Study Workspace: Slide Deck (Left) & Lecture Notes (Right) -->
+      <div class="dual-pane-container">
+        
+        <!-- Left Column: High-Res Slide Presentation Card -->
+        <section class="slide-stage-card">
+          <div class="slide-view-header">
+            <div class="slide-counter">
+              <i class="fa-regular fa-image"></i>
+              <span>投影片 <span id="currentSlideNum">1</span> / <span id="totalSlideNum">36</span></span>
+            </div>
+            <div style="display: flex; gap: 0.4rem;">
+              <button class="btn-icon" id="btnSlidePrev" title="上一張 (← 鍵)">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+              <button class="btn-icon" id="btnSlideNext" title="下一張 (→ 鍵 或 空白鍵)">
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+              <button class="btn-icon" id="btnSlideFullscreen" title="全螢幕投影展示 (F 鍵)">
+                <i class="fa-solid fa-expand"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Slide Main Display -->
+          <div class="slide-stage-main" id="slideStageMain">
+            <img src="" alt="Slide Image" class="slide-main-img" id="slideMainImg" loading="lazy">
+            <button class="slide-nav-overlay-btn slide-prev-btn" id="overlayPrevBtn" title="上一張">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button class="slide-nav-overlay-btn slide-next-btn" id="overlayNextBtn" title="下一張">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+
+          <!-- Slide Thumbnail Strip -->
+          <div class="slide-thumbnails-strip" id="thumbnailsStrip">
+            <!-- Dynamically populated thumbnails -->
+          </div>
+
+          <!-- Slide Details & Notes -->
+          <div class="slide-info-footer">
+            <div class="slide-headline" id="slideHeadline">投影片重點提要</div>
+            <ul class="slide-bullet-list" id="slideBulletList">
+              <!-- Bullet points from slide shapes -->
+            </ul>
+            <div id="slideNotesBox" style="display: none; padding: 0.6rem 0.8rem; background: var(--bg-surface-subtle); border-radius: var(--radius-sm); font-size: 0.85rem; color: var(--text-muted);">
+              <strong><i class="fa-regular fa-comment-dots text-gold"></i> 講員備忘筆記：</strong>
+              <span id="slideNotesText"></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Right Column: Lecture Notes & Narrative Exposition -->
+        <section class="lecture-pane-card">
+          <div class="lecture-header">
+            <div class="lecture-title-box">
+              <h3>
+                <i class="fa-solid fa-feather-pointed text-gold"></i>
+                <span>門下講義 · 深度述說教學</span>
+              </h3>
+            </div>
+            <div class="lecture-tools">
+              <button class="btn-secondary" id="lectureCopyBtn" title="複製本課講義精華">
+                <i class="fa-regular fa-copy"></i> 複製
+              </button>
+              <button class="btn-secondary" id="toggleMaskRightBtn" title="切換挖空填空">
+                <i class="fa-solid fa-pen-clip"></i> 填空測驗
+              </button>
+            </div>
+          </div>
+
+          <!-- Lecture Scrollable Narrative -->
+          <div class="lecture-scroll-content" id="lectureScrollContent">
+            <!-- Dynamically populated from curriculum.json -->
+          </div>
+        </section>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Presenter Fullscreen Overlay Modal -->
+  <div class="presenter-modal" id="presenterModal" style="display: none;">
+    <div class="presenter-topbar">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <span class="brand-badge">講員投影模式</span>
+        <strong id="presenterLessonTitle" style="font-size: 1.1rem; color: #EDE7DE;">為主作榮耀的見證</strong>
+      </div>
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <span style="font-family: var(--font-mono); color: var(--gold-primary); font-size: 1rem;" id="presenterSlideIndicator">1 / 36</span>
+        <button class="btn-icon" id="closePresenterBtn" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: #FFF;" title="退出演講模式 (ESC)">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+    <div class="presenter-body" id="presenterBody">
+      <img src="" alt="Presenter Slide" class="presenter-img" id="presenterImg">
+    </div>
+    <div class="presenter-controls">
+      <button class="btn-secondary" id="presenterPrevBtn" style="background: rgba(255,255,255,0.1); color: #FFF; border-color: rgba(255,255,255,0.2);">
+        <i class="fa-solid fa-chevron-left"></i> 上一張 (←)
+      </button>
+      <button class="btn-primary" id="presenterNextBtn">
+        下一張 (→ 或 空白鍵) <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Global Search Modal -->
+  <div class="modal-backdrop" id="searchModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700;">
+          <i class="fa-solid fa-magnifying-glass text-gold"></i>
+          <span>智慧全文檢索</span>
+        </div>
+        <button class="btn-icon" id="closeSearchModalBtn">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="search-input-wrap">
+          <i class="fa-solid fa-search search-icon-pos"></i>
+          <input type="text" class="search-input-field" id="globalSearchInput" placeholder="輸入關鍵字 (如：見證、BEST、洗禮、禱告、聖靈、家庭)..." autocomplete="off">
+        </div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+          <span id="searchResultSummary">請輸入關鍵字進行檢索</span>
+          <span>支援快速跳轉至指定章節與投影片</span>
+        </div>
+        <div class="search-results-list" id="searchResultsList">
+          <!-- Dynamically populated search hits -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Practical Tools Modal (見證產生器 & BEST 邀約工具) -->
+  <div class="modal-backdrop" id="toolkitModal">
+    <div class="modal-content" style="max-width: 780px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700;">
+          <i class="fa-solid fa-toolbox text-gold"></i>
+          <span>幸福小組實作秘笈工具箱</span>
+        </div>
+        <button class="btn-icon" id="closeToolkitModalBtn">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Tab navigation inside toolkit -->
+        <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-parchment); padding-bottom: 0.6rem;">
+          <button class="tab-btn active" id="toolTabTestimony">
+            <i class="fa-solid fa-pen-nib"></i> 3-5分鐘動人見證產生器
+          </button>
+          <button class="tab-btn" id="toolTabBest">
+            <i class="fa-solid fa-user-plus"></i> BEST 邀約與受洗引導檢核
+          </button>
+        </div>
+
+        <!-- Testimony Generator Tab Content -->
+        <div id="testimonyToolContent" style="display: flex; flex-direction: column; gap: 1rem;">
+          <div style="font-size: 0.88rem; color: var(--text-secondary); background: var(--gold-light); padding: 0.75rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--gold-border);">
+            <strong><i class="fa-solid fa-lightbulb text-gold"></i> 實作秘笈一重點心法：</strong> 見證有目的性，不是隨意聊天。掌握「信主前（1分鐘）→ 轉折點（1分鐘）→ 信主後（1.5分鐘）」黃金架構，真實分享上帝奇妙作為！
+          </div>
+
+          <div>
+            <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.3rem;">1. 信主前的光景（困境、空虛、軟弱或盲點）：</label>
+            <textarea id="testimonyBefore" rows="2" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-parchment); border-radius: var(--radius-sm); font-family: inherit; font-size: 0.9rem;" placeholder="例如：過去的我總是依賴自己的能力，遇到挫折時內心充滿焦慮與不安全感..."></textarea>
+          </div>
+
+          <div>
+            <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.3rem;">2. 遇見主的契機與轉折（誰邀請、哪一句話、哪次禱告打動了你）：</label>
+            <textarea id="testimonyTurning" rows="2" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-parchment); border-radius: var(--radius-sm); font-family: inherit; font-size: 0.9rem;" placeholder="例如：透過朋友的真誠邀請參加幸福小組，在小組敬拜時感受到前所未有的平安與無條件的愛..."></textarea>
+          </div>
+
+          <div>
+            <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.3rem;">3. 信主後的翻轉與生命的改變（真實經歷上帝的恩典與現在的平安）：</label>
+            <textarea id="testimonyAfter" rows="2" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-parchment); border-radius: var(--radius-sm); font-family: inherit; font-size: 0.9rem;" placeholder="例如：如今當我面對挑戰，我知道有天父作我的靠山，家庭關係被修復，生命充滿盼望！"></textarea>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 0.6rem;">
+            <button class="btn-secondary" id="clearTestimonyBtn">清除重寫</button>
+            <button class="btn-primary" id="copyTestimonyBtn">
+              <i class="fa-regular fa-copy"></i> 複製完整見證講稿
+            </button>
+          </div>
+        </div>
+
+        <!-- BEST Inviting & Baptism Guidance Tab Content -->
+        <div id="bestToolContent" style="display: none; flex-direction: column; gap: 1rem;">
+          <div style="font-size: 0.88rem; color: var(--text-secondary); background: var(--bg-surface-subtle); padding: 0.75rem 1rem; border-radius: var(--radius-sm); border-left: 4px solid var(--gold-primary);">
+            <strong><i class="fa-solid fa-bullseye text-gold"></i> 實作秘笈二至四精髓：</strong> 邀約 BEST 要刻意營造尊榮感，引導受洗要「用諸般的智慧」，及早鋪陳洗禮見證，為其掃除心中疑慮！
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div style="background: var(--bg-surface); border: 1px solid var(--border-parchment); border-radius: var(--radius-sm); padding: 0.85rem;">
+              <strong style="color: var(--gold-primary); font-size: 0.9rem; display: block; margin-bottom: 0.5rem;"><i class="fa-solid fa-check-double"></i> 邀約 BEST 六大檢核：</strong>
+              <ul style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6; padding-left: 1.2rem;">
+                <li>建立平時的真實關懷與友誼</li>
+                <li>為對象進行連續性禱告守望</li>
+                <li>熱情、肯定、不給壓力的邀約口吻</li>
+                <li>提前告知聚會時間、地點與接送</li>
+                <li>小組同工全員動員分工接待</li>
+                <li>預備精緻小禮物與尊榮感受</li>
+              </ul>
+            </div>
+
+            <div style="background: var(--bg-surface); border: 1px solid var(--border-parchment); border-radius: var(--radius-sm); padding: 0.85rem;">
+              <strong style="color: var(--crimson-primary); font-size: 0.9rem; display: block; margin-bottom: 0.5rem;"><i class="fa-solid fa-water"></i> 引導受洗關鍵心法：</strong>
+              <ul style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6; padding-left: 1.2rem;">
+                <li>釐清受洗不是加入俱樂部，而是領受天國名份</li>
+                <li>解答傳統祭祖與孝道顧慮（敬祖不拜偶像）</li>
+                <li>一對一陪伴閱讀《如何受洗》講義</li>
+                <li>真誠為其心中的攔阻迫切禱告爭戰</li>
+                <li>以愛化解家人或長輩的擔憂</li>
+                <li>歡喜慶祝屬天重生的神聖時刻</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Page Footer -->
+  <footer class="biblia-footer">
+    <div class="footer-content">
+      <div>
+        <strong style="color: var(--text-primary); font-family: var(--font-serif); font-size: 1rem;">BlessEq · 幸福門訓裝備系統</strong>
+        <p style="margin-top: 0.3rem;">以基督的心為心 · 興起剛強成熟的門徒 · 願萬國萬民同得福音大能</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/waatax/BlessEq" target="_blank" class="footer-link">
+          <i class="fa-brands fa-github"></i> GitHub 專案倉庫
+        </a>
+        <a href="http://waatax.github.io/BlessEq" target="_blank" class="footer-link">
+          <i class="fa-solid fa-globe"></i> 線上部署頁面
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Curriculum Database Script (Window.BLESS_EQ_DATA) -->
+  <script src="js/data.js"></script>
+  <!-- Application Core Controller Logic -->
+  <script src="js/app.js"></script>
+</body>
+</html>
