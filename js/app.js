@@ -528,6 +528,28 @@
         });
         DOM.sectionNavPills.appendChild(pill);
       });
+
+      // P3: Supplementary Nav Pill
+      if (lesson.supplementary) {
+        const suppPill = document.createElement('button');
+        suppPill.className = 'section-nav-pill supplement-pill';
+        suppPill.setAttribute('role', 'tab');
+        suppPill.setAttribute('aria-selected', 'false');
+        suppPill.id = 'nav-pill-supplement';
+        suppPill.title = '福氣教會與台灣主要教會實戰補充資料';
+        suppPill.innerHTML = `<i class="fa-solid fa-church text-gold" style="font-size:0.75em;"></i> <span>實戰補充</span>`;
+        suppPill.addEventListener('click', () => {
+          DOM.sectionNavPills.querySelectorAll('.section-nav-pill').forEach(p => {
+            p.classList.remove('active');
+            p.setAttribute('aria-selected', 'false');
+          });
+          suppPill.classList.add('active');
+          suppPill.setAttribute('aria-selected', 'true');
+          const card = $('card-church-supplement');
+          if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        DOM.sectionNavPills.appendChild(suppPill);
+      }
     }
 
     // 2. Render Curated Study Section Cards
@@ -613,6 +635,11 @@
       DOM.lectureScrollContent.appendChild(card);
     });
 
+    // Render Church Supplementary Card (福氣教會與台灣主要教會實戰補充)
+    if (lesson.supplementary) {
+      renderChurchSupplementaryCard(lesson, DOM.lectureScrollContent);
+    }
+
     // Small Group Reflection Workshop Box at the end
     const reflectionCard = document.createElement('div');
     reflectionCard.className = 'reflection-box';
@@ -627,6 +654,185 @@
     DOM.lectureScrollContent.appendChild(reflectionCard);
 
     updateBlanksDisplay();
+  }
+
+  // ─────────────────────────────────────────────
+  //  CHURCH SUPPLEMENTARY CARD (福氣教會與台灣主要教會實戰補充)
+  // ─────────────────────────────────────────────
+  function renderChurchSupplementaryCard(lesson, container) {
+    const supp = lesson.supplementary;
+    if (!supp) return;
+
+    const card = document.createElement('article');
+    card.className = 'church-supplement-card';
+    card.id = 'card-church-supplement';
+    card.dataset.sectionTitle = '實戰補充';
+
+    let insightsHtml = '';
+    if (supp.blessingChurch && supp.blessingChurch.coreInsights) {
+      insightsHtml = supp.blessingChurch.coreInsights.map((ci, idx) => `
+        <div class="supplement-insight-item">
+          <div class="insight-heading">
+            <span class="insight-number">${idx + 1}</span>
+            <strong>${escapeHtml(ci.heading)}</strong>
+          </div>
+          <p class="insight-detail">${escapeHtml(ci.detail)}</p>
+        </div>
+      `).join('');
+    }
+
+    let churchesHtml = '';
+    if (supp.taiwanChurches && supp.taiwanChurches.length > 0) {
+      churchesHtml = supp.taiwanChurches.map(tc => `
+        <div class="church-case-item">
+          <div class="case-header">
+            <div class="case-church-name">
+              <i class="fa-solid fa-cross text-gold"></i>
+              <strong>${escapeHtml(tc.churchName)}</strong>
+              ${tc.pastorOrLeader ? `<span class="case-pastor">（${escapeHtml(tc.pastorOrLeader)}）</span>` : ''}
+            </div>
+            <span class="case-model-badge">${escapeHtml(tc.modelName)}</span>
+          </div>
+          <p class="case-experience">${escapeHtml(tc.practicalExperience)}</p>
+        </div>
+      `).join('');
+    }
+
+    let tacticsHtml = '';
+    if (supp.pastoralTactics && supp.pastoralTactics.length > 0) {
+      tacticsHtml = supp.pastoralTactics.map(pt => `
+        <div class="tactic-callout">
+          <div class="tactic-challenge">
+            <i class="fa-solid fa-triangle-exclamation text-crimson"></i>
+            <div>
+              <strong>前線常見盲點與挫折：</strong>
+              <span>${escapeHtml(pt.challenge)}</span>
+            </div>
+          </div>
+          <div class="tactic-solution">
+            <i class="fa-solid fa-lightbulb text-gold"></i>
+            <div>
+              <strong>福氣教會實戰破解之道：</strong>
+              <span>${escapeHtml(pt.solution)}</span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    let checklistHtml = '';
+    if (supp.actionChecklist && supp.actionChecklist.length > 0) {
+      checklistHtml = `
+        <div class="supplement-checklist-block">
+          <h5 class="sub-block-title"><i class="fa-solid fa-list-check text-gold"></i> 本課福長與同工實戰行動檢核</h5>
+          <ul class="supplement-checklist">
+            ${supp.actionChecklist.map(ac => `
+              <li class="checklist-item">
+                <i class="fa-regular fa-square-check text-gold"></i>
+                <span>${escapeHtml(ac)}</span>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    let prayerHtml = '';
+    if (supp.commissioningPrayer) {
+      prayerHtml = `
+        <div class="commissioning-prayer-card">
+          <div class="prayer-header">
+            <h5><i class="fa-solid fa-hands-praying text-gold"></i> 本課同工差遣與得勝宣告禱文</h5>
+            <button class="btn-secondary prayer-copy-btn" id="btnCopyPrayer" type="button" title="複製禱詞至剪貼簿">
+              <i class="fa-regular fa-copy"></i> <span class="btn-text">複製禱詞</span>
+            </button>
+          </div>
+          <blockquote class="prayer-text" id="prayerTextContent">
+            「${escapeHtml(supp.commissioningPrayer)}」
+          </blockquote>
+        </div>
+      `;
+    }
+
+    card.innerHTML = `
+      <div class="supplement-ribbon">
+        <i class="fa-solid fa-church"></i> 福氣教會與台灣主要教會 · 實戰補充寶庫
+      </div>
+      <div class="supplement-header">
+        <div class="supplement-badge-group">
+          <span class="supplement-badge">牧會前線實務</span>
+          <span class="supplement-badge-accent">幸福小組現場心法</span>
+        </div>
+        <h4 class="supplement-theme-title">${escapeHtml(supp.themeTitle || lesson.title)}</h4>
+      </div>
+
+      ${supp.blessingChurch && supp.blessingChurch.pastorQuote ? `
+        <div class="supplement-hero-quote">
+          <i class="fa-solid fa-quote-left quote-watermark"></i>
+          <p class="hero-quote-text">${escapeHtml(supp.blessingChurch.pastorQuote)}</p>
+          <div class="hero-quote-source">
+            <i class="fa-solid fa-bookmark text-gold"></i>
+            <span>${escapeHtml(supp.blessingChurch.quoteSource || '高雄福氣教會 楊錫儒主任牧師')}</span>
+          </div>
+        </div>
+      ` : ''}
+
+      ${insightsHtml ? `
+        <div class="supplement-sub-block">
+          <h5 class="sub-block-title"><i class="fa-solid fa-fire text-gold"></i> 福氣教會現場實戰心法提要</h5>
+          <div class="supplement-insights-grid">${insightsHtml}</div>
+        </div>
+      ` : ''}
+
+      ${churchesHtml ? `
+        <div class="supplement-sub-block">
+          <h5 class="sub-block-title"><i class="fa-solid fa-people-roof text-gold"></i> 台灣主要教會落地實踐與跨堂會經驗</h5>
+          <div class="church-case-grid">${churchesHtml}</div>
+        </div>
+      ` : ''}
+
+      ${tacticsHtml ? `
+        <div class="supplement-sub-block">
+          <h5 class="sub-block-title"><i class="fa-solid fa-shield-halved text-gold"></i> 福長同工前線眉角與盲點拆彈</h5>
+          <div class="tactics-list">${tacticsHtml}</div>
+        </div>
+      ` : ''}
+
+      ${checklistHtml}
+      ${prayerHtml}
+    `;
+
+    container.appendChild(card);
+
+    // Bind copy prayer button
+    const copyBtn = card.querySelector('#btnCopyPrayer');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        const textToCopy = supp.commissioningPrayer;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(textToCopy).then(() => {
+            copyBtn.innerHTML = '<i class="fa-solid fa-check text-gold"></i> <span class="btn-text">已複製</span>';
+            setTimeout(() => {
+              copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> <span class="btn-text">複製禱詞</span>';
+            }, 2000);
+          }).catch(() => {
+            copyBtn.innerHTML = '<i class="fa-solid fa-check text-gold"></i> <span class="btn-text">已複製</span>';
+          });
+        } else {
+          // Fallback
+          const ta = document.createElement('textarea');
+          ta.value = textToCopy;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          copyBtn.innerHTML = '<i class="fa-solid fa-check text-gold"></i> <span class="btn-text">已複製</span>';
+          setTimeout(() => {
+            copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> <span class="btn-text">複製禱詞</span>';
+          }, 2000);
+        }
+      });
+    }
   }
 
   // ─────────────────────────────────────────────
@@ -1018,9 +1224,40 @@
         }
         re.lastIndex = 0;
       }
+
+      // Search Supplementary materials (福氣教會與台灣主要教會實戰補充)
+      if (lesson.supplementary) {
+        const supp = lesson.supplementary;
+        const suppParts = [
+          supp.themeTitle || '',
+          supp.blessingChurch ? (supp.blessingChurch.pastorQuote || '') : '',
+          supp.blessingChurch ? (supp.blessingChurch.quoteSource || '') : '',
+          supp.blessingChurch ? (supp.blessingChurch.coreInsights || []).map(ci => ci.heading + ' ' + ci.detail).join(' ') : '',
+          (supp.taiwanChurches || []).map(tc => tc.churchName + ' ' + (tc.pastorOrLeader || '') + ' ' + tc.modelName + ' ' + tc.practicalExperience).join(' '),
+          (supp.pastoralTactics || []).map(pt => pt.challenge + ' ' + pt.solution).join(' '),
+          (supp.actionChecklist || []).join(' '),
+          supp.commissioningPrayer || ''
+        ];
+        const suppText = suppParts.join(' ');
+
+        re.lastIndex = 0;
+        const suppIdx = suppText.search(re);
+        if (suppIdx !== -1) {
+          const snippet = suppText.slice(Math.max(0, suppIdx - 20), suppIdx + 110);
+          hits.push({
+            type: 'supplement',
+            lesson,
+            title: `實戰補充 · ${supp.themeTitle || lesson.title}`,
+            snippet,
+            slideIdx: 1,
+            targetCardId: 'card-church-supplement'
+          });
+        }
+        re.lastIndex = 0;
+      }
     });
 
-    // Deduplicate by lessonId+slideIdx
+    // Deduplicate by lessonId+slideIdx+type
     const seen = new Set();
     const unique = hits.filter(h => {
       const key = `${h.lesson.id}:${h.slideIdx}:${h.type}`;
@@ -1035,7 +1272,7 @@
 
     DOM.searchResultsList.innerHTML = '';
     unique.slice(0, 40).forEach(h => {
-      const typeLabel = h.type === 'lesson' ? '課程' : h.type === 'slide' ? '投影片' : '講義';
+      const typeLabel = h.type === 'lesson' ? '課程' : h.type === 'slide' ? '投影片' : h.type === 'supplement' ? '實戰補充' : '講義';
 
       let highlightedTitle = escapeHtml(h.title || '');
       let highlightedSnippet = escapeHtml(h.snippet || '');
@@ -1058,6 +1295,12 @@
       const handler = () => {
         loadLesson(h.lesson.id, h.slideIdx);
         closeSearch();
+        if (h.targetCardId) {
+          setTimeout(() => {
+            const card = $(h.targetCardId);
+            if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 180);
+        }
       };
       item.addEventListener('click', handler);
       item.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') handler(); });

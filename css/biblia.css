@@ -1945,8 +1945,386 @@ kbd.kbd-shortcut {
   background: rgba(221, 176, 66, 0.32);
 }
 
-[data-theme="sepia"] .speaking-sentence {
-  background: rgba(166, 124, 26, 0.25);
+
+/* ===== CHURCH SUPPLEMENTARY CARD (福氣教會與台灣主要教會實戰補充) ===== */
+.church-supplement-card {
+  position: relative;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--gold-border);
+  border-top: 4px solid var(--gold-primary);
+  border-radius: var(--radius-lg);
+  padding: 1.6rem 1.8rem;
+  margin-top: 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow-md);
+  transition: var(--transition);
+}
+
+.church-supplement-card:hover {
+  box-shadow: var(--shadow-lg), var(--shadow-gold);
+}
+
+.supplement-ribbon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, var(--gold-primary), #E5C368);
+  color: #1C232B;
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+  padding: 0.35rem 0.9rem;
+  border-radius: var(--radius-full);
+  margin-bottom: 0.9rem;
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .supplement-ribbon {
+  color: #0E1217;
+  background: linear-gradient(135deg, #DDB042, #F3D27C);
+}
+
+.supplement-header {
+  margin-bottom: 1.2rem;
+}
+
+.supplement-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.supplement-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--crimson-primary);
+  background: var(--crimson-light);
+  border: 1px solid var(--crimson-border);
+  padding: 0.18rem 0.55rem;
+  border-radius: var(--radius-sm);
+}
+
+.supplement-badge-accent {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gold-primary);
+  background: var(--gold-light);
+  border: 1px solid var(--gold-border);
+  padding: 0.18rem 0.55rem;
+  border-radius: var(--radius-sm);
+}
+
+.supplement-theme-title {
+  font-size: 1.22rem;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Hero Quote */
+.supplement-hero-quote {
+  position: relative;
+  background: var(--bg-surface-subtle);
+  border-left: 4px solid var(--crimson-primary);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 1.2rem 1.4rem 1.1rem 1.6rem;
+  margin-bottom: 1.4rem;
+  overflow: hidden;
+}
+
+.quote-watermark {
+  position: absolute;
+  top: -10px;
+  right: 15px;
+  font-size: 4.5rem;
+  color: var(--gold-primary);
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.hero-quote-text {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: var(--text-primary);
+  font-style: italic;
+  margin: 0 0 0.6rem 0;
+}
+
+.hero-quote-source {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--gold-primary);
+}
+
+/* Sub-blocks */
+.supplement-sub-block {
+  margin-bottom: 1.35rem;
+}
+
+.sub-block-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--gold-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px dashed var(--border-parchment);
+}
+
+/* Insights Grid */
+.supplement-insights-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.supplement-insight-item {
+  background: var(--bg-parchment);
+  border: 1px solid var(--border-parchment);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1.05rem;
+  transition: var(--transition);
+}
+
+.supplement-insight-item:hover {
+  border-color: var(--gold-border);
+  background: var(--bg-surface);
+}
+
+.insight-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.94rem;
+  color: var(--text-primary);
+  margin-bottom: 0.3rem;
+}
+
+.insight-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: var(--gold-primary);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .insight-number {
+  color: #12161D;
+}
+
+.insight-detail {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  margin: 0;
+}
+
+/* Church Cases Grid */
+.church-case-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.85rem;
+}
+
+.church-case-item {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-parchment);
+  border-radius: var(--radius-md);
+  padding: 0.95rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  transition: var(--transition);
+}
+
+.church-case-item:hover {
+  border-color: var(--gold-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.case-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.case-church-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.case-pastor {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.case-model-badge {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--olive-primary);
+  background: var(--olive-light);
+  border: 1px solid rgba(62, 99, 72, 0.3);
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-full);
+}
+
+.case-experience {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  margin: 0;
+}
+
+/* Tactics Callout */
+.tactics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.tactic-callout {
+  background: var(--bg-parchment);
+  border: 1px solid var(--border-parchment);
+  border-radius: var(--radius-md);
+  padding: 0.95rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.tactic-challenge {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.89rem;
+  color: var(--crimson-primary);
+  line-height: 1.6;
+}
+
+.tactic-solution {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.89rem;
+  color: var(--text-primary);
+  line-height: 1.6;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border-parchment);
+}
+
+/* Action Checklist */
+.supplement-checklist-block {
+  background: var(--bg-surface-subtle);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.3rem;
+  border: 1px solid var(--border-parchment-subtle);
+}
+
+.supplement-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.89rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+/* Commissioning Prayer Card */
+.commissioning-prayer-card {
+  background: linear-gradient(135deg, var(--bg-parchment-warm), var(--bg-surface));
+  border: 1.5px solid var(--gold-border);
+  border-radius: var(--radius-md);
+  padding: 1.15rem 1.35rem;
+  margin-top: 0.75rem;
+}
+
+.prayer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+
+.prayer-header h5 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gold-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.prayer-copy-btn {
+  font-size: 0.78rem;
+  padding: 0.3rem 0.65rem;
+}
+
+.prayer-text {
+  font-family: var(--font-serif);
+  font-size: 0.96rem;
+  line-height: 1.75;
+  color: var(--crimson-primary);
+  font-style: italic;
+  margin: 0;
+  padding: 0.5rem 0.8rem;
+  background: var(--crimson-light);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--crimson-primary);
+}
+
+[data-theme="dark"] .prayer-text {
+  color: #F8C3CD;
+  background: rgba(140, 34, 52, 0.2);
+}
+
+/* Nav Pill for Supplementary */
+.section-nav-pill.supplement-pill {
+  border-color: var(--gold-primary);
+  background: var(--gold-light);
+  color: var(--gold-primary);
+  font-weight: 600;
+}
+
+.section-nav-pill.supplement-pill.active {
+  background: var(--gold-primary);
+  color: #FFFFFF;
+}
+
+[data-theme="dark"] .section-nav-pill.supplement-pill.active {
+  color: #12161D;
 }
 
 /* ===== RESPONSIVE: 1200px ===== */
