@@ -12,11 +12,21 @@
   'use strict';
 
   // ─────────────────────────────────────────────
-  //  STATE
   // ─────────────────────────────────────────────
-  const THEMES = ['light', 'sepia', 'dark'];
-  const THEME_ICONS = { light: 'fa-sun', sepia: 'fa-cloud-sun', dark: 'fa-moon' };
-  const FONT_SCALES = [1.0, 1.15, 1.3];
+  //  STATE & THEMES
+  // ─────────────────────────────────────────────
+  const THEMES = ['light', 'sepia', 'sage', 'dark'];
+  const THEME_ICONS = { light: 'fa-sun', sepia: 'fa-scroll', sage: 'fa-leaf', dark: 'fa-moon' };
+  const THEME_NAMES = { light: '日光羊皮', sepia: '古卷柔光', sage: '青竹晨曦', dark: '黑曜暗夜' };
+
+  const FONT_SIZES = [15, 17, 19, 22, 25];
+  const FONT_SIZE_LABELS = {
+    15: '精簡 (15px)',
+    17: '標準 (17px)',
+    19: '舒適 (19px)',
+    22: '特大 (22px)',
+    25: '尊長 (25px)'
+  };
 
   const state = {
     lessons: [],
@@ -24,8 +34,14 @@
     activeSlideIndex: 1,
     activeCategory: 'all',
     isMasked: false,
-    themeIndex: THEMES.indexOf(localStorage.getItem('blesseq_theme') || 'light'),
-    fontScaleIndex: parseInt(localStorage.getItem('blesseq_font_scale_idx') || '0', 10),
+    themeIndex: Math.max(0, THEMES.indexOf(localStorage.getItem('blesseq_theme') || 'light')),
+    fontSize: parseInt(localStorage.getItem('blesseq_font_size') || '17', 10),
+    lineHeight: parseFloat(localStorage.getItem('blesseq_line_height') || '1.85'),
+    fontFamily: localStorage.getItem('blesseq_font_family') || 'sans',
+    mobileView: localStorage.getItem('blesseq_mobile_view') || 'lecture',
+    isDrawerOpen: false,
+    isSettingsOpen: false,
+    toastTimer: null,
     isPresenterOpen: false,
     isGridOpen: false,
     isNotesOpen: false,
@@ -49,6 +65,13 @@
 
   const DOM = {
     html: document.documentElement,
+    appLayout: $('appLayout'),
+    readingProgressBar: $('readingProgressBar'),
+    mobileMenuBtn: $('mobileMenuBtn'),
+    sidebarCurriculum: $('sidebarCurriculum'),
+    sidebarBackdrop: $('sidebarBackdrop'),
+    closeSidebarBtn: $('closeSidebarBtn'),
+
     themeToggleBtn: $('themeToggleBtn'),
     themeIcon: $('themeIcon'),
     fontScaleBtn: $('fontScaleBtn'),
@@ -64,6 +87,21 @@
     btnPrevLesson: $('btnPrevLesson'),
     btnNextLesson: $('btnNextLesson'),
 
+    // Mobile View Switcher
+    mobileViewSwitcher: $('mobileViewSwitcher'),
+    viewSwitchBtns: document.querySelectorAll('.view-switch-btn[data-view]'),
+
+    // Mobile Bottom Dock
+    mobileBottomDock: $('mobileBottomDock'),
+    dockMenuBtn: $('dockMenuBtn'),
+    dockLectureBtn: $('dockLectureBtn'),
+    dockSlideBtn: $('dockSlideBtn'),
+    dockAudioBtn: $('dockAudioBtn'),
+    dockAudioIcon: $('dockAudioIcon'),
+    dockAudioText: $('dockAudioText'),
+    dockSettingsBtn: $('dockSettingsBtn'),
+
+    // Audio Narrator
     audioNarrateBtn: $('audioNarrateBtn'),
     audioIcon: $('audioIcon'),
     audioStatusText: $('audioStatusText'),
@@ -73,6 +111,7 @@
     audioSpeedSelect: $('audioSpeedSelect'),
     sectionNavPills: $('sectionNavPills'),
 
+    // Slides Pane
     currentSlideNum: $('currentSlideNum'),
     totalSlideNum: $('totalSlideNum'),
     btnSlidePrev: $('btnSlidePrev'),
@@ -90,16 +129,19 @@
     slideNotesBox: $('slideNotesBox'),
     slideNotesText: $('slideNotesText'),
 
+    // Lecture Pane
     lectureScrollContent: $('lectureScrollContent'),
     lectureCopyBtn: $('lectureCopyBtn'),
     toggleMaskBtn: $('toggleMaskBtn'),
     maskIcon: $('maskIcon'),
     toggleMaskRightBtn: $('toggleMaskRightBtn'),
 
+    // Notes
     personalNotesToggle: $('personalNotesToggle'),
     personalNotesArea: $('personalNotesArea'),
     personalNotesInput: $('personalNotesInput'),
 
+    // Presenter
     presenterModal: $('presenterModal'),
     presenterLessonTitle: $('presenterLessonTitle'),
     presenterSlideIndicator: $('presenterSlideIndicator'),
@@ -112,6 +154,7 @@
     presenterTimerDisplay: $('presenterTimerDisplay'),
     presenterTimerIcon: $('presenterTimerIcon'),
 
+    // Search
     searchModal: $('searchModal'),
     openSearchBtn: $('openSearchBtn'),
     closeSearchModalBtn: $('closeSearchModalBtn'),
@@ -119,6 +162,7 @@
     searchResultsList: $('searchResultsList'),
     searchResultSummary: $('searchResultSummary'),
 
+    // Toolkit
     toolkitModal: $('toolkitModal'),
     openToolkitBtn: $('openToolkitBtn'),
     closeToolkitModalBtn: $('closeToolkitModalBtn'),
@@ -133,6 +177,23 @@
     testimonyAfter: $('testimonyAfter'),
     copyTestimonyBtn: $('copyTestimonyBtn'),
     clearTestimonyBtn: $('clearTestimonyBtn'),
+
+    // Reading Settings Modal
+    readingSettingsModal: $('readingSettingsModal'),
+    closeReadingSettingsBtn: $('closeReadingSettingsBtn'),
+    applySettingsCloseBtn: $('applySettingsCloseBtn'),
+    resetSettingsBtn: $('resetSettingsBtn'),
+    fontSizeSlider: $('fontSizeSlider'),
+    fontSizeDisplay: $('fontSizeDisplay'),
+    fontSizeButtons: document.querySelectorAll('.font-size-btn[data-size]'),
+    lineHeightButtons: document.querySelectorAll('.line-height-btn[data-lh]'),
+    fontFamilyButtons: document.querySelectorAll('.font-family-btn[data-ff]'),
+    themeSelectButtons: document.querySelectorAll('.theme-select-btn[data-thm]'),
+    readingPreviewCard: $('readingPreviewCard'),
+    previewText: $('previewText'),
+
+    // Toast
+    toastNotice: $('toastNotice'),
   };
 
   // ─────────────────────────────────────────────
@@ -146,12 +207,14 @@
     state.lessons = window.BLESS_EQ_DATA;
 
     applyTheme(false);
-    applyFontScale(false);
+    applyReadingSettings(false);
+    setMobileView(state.mobileView, false);
     bindEvents();
     initInteractiveChecklists();
     renderLessonList();
     routeFromHash();
     window.addEventListener('hashchange', routeFromHash);
+    initScrollProgressBar();
   }
 
   // ─────────────────────────────────────────────
@@ -181,36 +244,188 @@
   }
 
   // ─────────────────────────────────────────────
-  //  THEME ENGINE (P1-1: 3 themes)
+  //  THEME ENGINE (4 Comfort Themes)
   // ─────────────────────────────────────────────
   function applyTheme(save = true) {
     if (state.themeIndex < 0 || state.themeIndex >= THEMES.length) state.themeIndex = 0;
     const theme = THEMES[state.themeIndex];
     DOM.html.setAttribute('data-theme', theme);
-    DOM.themeIcon.className = `fa-solid ${THEME_ICONS[theme]}`;
-    DOM.themeToggleBtn.setAttribute('aria-label', `目前主題：${['日光','古卷護眼','暗夜'][state.themeIndex]}，點擊切換下一主題`);
+    if (DOM.themeIcon) DOM.themeIcon.className = `fa-solid ${THEME_ICONS[theme] || 'fa-sun'}`;
+    if (DOM.themeToggleBtn) {
+      DOM.themeToggleBtn.setAttribute('aria-label', `目前主題：${THEME_NAMES[theme]}，點擊切換下一主題`);
+      DOM.themeToggleBtn.setAttribute('title', `主題：${THEME_NAMES[theme]} (點擊切換)`);
+    }
+    if (DOM.themeSelectButtons) {
+      DOM.themeSelectButtons.forEach(btn => {
+        const isActive = btn.dataset.thm === theme;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
+      });
+    }
     if (save) safeStorage('set', 'blesseq_theme', theme);
+  }
+
+  function setThemeByName(themeName, save = true) {
+    const idx = THEMES.indexOf(themeName);
+    if (idx !== -1) {
+      state.themeIndex = idx;
+      applyTheme(save);
+      showToast(`已切換至「${THEME_NAMES[themeName]}」主題`, 'fa-palette');
+    }
   }
 
   function cycleTheme() {
     state.themeIndex = (state.themeIndex + 1) % THEMES.length;
     applyTheme();
+    showToast(`已切換至「${THEME_NAMES[THEMES[state.themeIndex]]}」`, 'fa-palette');
   }
 
   // ─────────────────────────────────────────────
-  //  FONT SCALE (P0-6: fixed to use html element)
+  //  READING TYPOGRAPHY ENGINE (Adjustable Size & Spacing)
   // ─────────────────────────────────────────────
-  function applyFontScale(save = true) {
-    if (state.fontScaleIndex < 0 || state.fontScaleIndex >= FONT_SCALES.length) state.fontScaleIndex = 0;
-    const scale = FONT_SCALES[state.fontScaleIndex];
-    document.documentElement.style.fontSize = `${scale * 16}px`; // P0-6 FIX: was body
-    DOM.fontScaleBtn.setAttribute('aria-label', `目前字體：${['標準','大','超大'][state.fontScaleIndex]}，點擊放大`);
-    if (save) safeStorage('set', 'blesseq_font_scale_idx', String(state.fontScaleIndex));
+  function applyReadingSettings(save = true) {
+    if (state.fontSize < 14) state.fontSize = 14;
+    if (state.fontSize > 26) state.fontSize = 26;
+
+    DOM.html.style.setProperty('--reading-font-size', `${state.fontSize}px`);
+    DOM.html.style.setProperty('--reading-line-height', String(state.lineHeight));
+    DOM.html.style.setProperty(
+      '--reading-font-family',
+      state.fontFamily === 'serif' ? 'var(--font-serif)' : 'var(--font-sans)'
+    );
+
+    if (DOM.fontSizeSlider) DOM.fontSizeSlider.value = state.fontSize;
+    if (DOM.fontSizeDisplay) {
+      const label = FONT_SIZE_LABELS[state.fontSize] || `${state.fontSize}px`;
+      DOM.fontSizeDisplay.textContent = label;
+    }
+    if (DOM.fontSizeButtons) {
+      DOM.fontSizeButtons.forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.size, 10) === state.fontSize);
+      });
+    }
+    if (DOM.lineHeightButtons) {
+      DOM.lineHeightButtons.forEach(btn => {
+        btn.classList.toggle('active', Math.abs(parseFloat(btn.dataset.lh) - state.lineHeight) < 0.05);
+      });
+    }
+    if (DOM.fontFamilyButtons) {
+      DOM.fontFamilyButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.ff === state.fontFamily);
+      });
+    }
+    if (DOM.previewText) {
+      DOM.previewText.style.fontSize = `${state.fontSize}px`;
+      DOM.previewText.style.lineHeight = String(state.lineHeight);
+      DOM.previewText.style.fontFamily = state.fontFamily === 'serif' ? 'var(--font-serif)' : 'var(--font-sans)';
+    }
+
+    if (save) {
+      safeStorage('set', 'blesseq_font_size', String(state.fontSize));
+      safeStorage('set', 'blesseq_line_height', String(state.lineHeight));
+      safeStorage('set', 'blesseq_font_family', state.fontFamily);
+    }
   }
 
-  function cycleFontScale() {
-    state.fontScaleIndex = (state.fontScaleIndex + 1) % FONT_SCALES.length;
-    applyFontScale();
+  function openReadingSettings() {
+    state.isSettingsOpen = true;
+    if (DOM.readingSettingsModal) {
+      DOM.readingSettingsModal.style.display = 'flex';
+      applyReadingSettings(false);
+      applyTheme(false);
+    }
+  }
+
+  function closeReadingSettings() {
+    state.isSettingsOpen = false;
+    if (DOM.readingSettingsModal) {
+      DOM.readingSettingsModal.style.display = 'none';
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  //  MOBILE DRAWER ENGINE (Responsive Offcanvas)
+  // ─────────────────────────────────────────────
+  function openMobileDrawer() {
+    state.isDrawerOpen = true;
+    if (DOM.sidebarCurriculum) DOM.sidebarCurriculum.classList.add('drawer-open');
+    if (DOM.sidebarBackdrop) DOM.sidebarBackdrop.classList.add('active');
+    if (DOM.mobileMenuBtn) DOM.mobileMenuBtn.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeMobileDrawer() {
+    state.isDrawerOpen = false;
+    if (DOM.sidebarCurriculum) DOM.sidebarCurriculum.classList.remove('drawer-open');
+    if (DOM.sidebarBackdrop) DOM.sidebarBackdrop.classList.remove('active');
+    if (DOM.mobileMenuBtn) DOM.mobileMenuBtn.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+  }
+
+  function toggleMobileDrawer() {
+    if (state.isDrawerOpen) closeMobileDrawer();
+    else openMobileDrawer();
+  }
+
+  // ─────────────────────────────────────────────
+  //  MOBILE VIEW SWITCHER (Lecture / Slides / Dual)
+  // ─────────────────────────────────────────────
+  function setMobileView(viewMode, save = true) {
+    if (!['lecture', 'slides', 'dual'].includes(viewMode)) viewMode = 'lecture';
+    state.mobileView = viewMode;
+    if (DOM.appLayout) DOM.appLayout.setAttribute('data-mobile-view', viewMode);
+
+    if (DOM.viewSwitchBtns) {
+      DOM.viewSwitchBtns.forEach(btn => {
+        const isActive = btn.dataset.view === viewMode;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+    }
+
+    if (DOM.dockLectureBtn) DOM.dockLectureBtn.classList.toggle('active', viewMode === 'lecture');
+    if (DOM.dockSlideBtn) DOM.dockSlideBtn.classList.toggle('active', viewMode === 'slides');
+
+    if (save) safeStorage('set', 'blesseq_mobile_view', viewMode);
+  }
+
+  // ─────────────────────────────────────────────
+  //  TOAST & READING PROGRESS
+  // ─────────────────────────────────────────────
+  function showToast(message, icon = 'fa-check') {
+    if (!DOM.toastNotice) return;
+    DOM.toastNotice.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${escapeHtml(message)}</span>`;
+    DOM.toastNotice.classList.add('show');
+    clearTimeout(state.toastTimer);
+    state.toastTimer = setTimeout(() => {
+      DOM.toastNotice.classList.remove('show');
+    }, 2200);
+  }
+
+  function initScrollProgressBar() {
+    const updateProgress = () => {
+      if (!DOM.readingProgressBar) return;
+      const isMobile = window.innerWidth <= 900;
+      let pct = 0;
+      if (isMobile) {
+        const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+        if (totalHeight > 0) pct = Math.round((window.scrollY / totalHeight) * 100);
+      } else {
+        const scroller = DOM.lectureScrollContent;
+        if (scroller) {
+          const totalHeight = scroller.scrollHeight - scroller.clientHeight;
+          if (totalHeight > 0) pct = Math.round((scroller.scrollTop / totalHeight) * 100);
+        }
+      }
+      pct = Math.max(0, Math.min(100, pct));
+      DOM.readingProgressBar.style.width = `${pct}%`;
+      DOM.readingProgressBar.setAttribute('aria-valuenow', String(pct));
+    };
+
+    window.addEventListener('scroll', updateProgress, { passive: true });
+    if (DOM.lectureScrollContent) {
+      DOM.lectureScrollContent.addEventListener('scroll', updateProgress, { passive: true });
+    }
   }
 
   // ─────────────────────────────────────────────
@@ -264,6 +479,7 @@
     const lesson = state.lessons.find(l => l.id === lessonId);
     if (!lesson) return;
 
+    closeMobileDrawer();
     stopSectionAudio();
     state.activeLessonId = lessonId;
     state.activeSlideIndex = Math.max(1, Math.min(slideIdx, lesson.slideCount));
@@ -515,7 +731,8 @@
         pill.setAttribute('aria-selected', idx === 0 ? 'true' : 'false');
         pill.id = `nav-pill-${sec.id}`;
         pill.title = `${sec.tag}: ${sec.title}`;
-        pill.innerHTML = `<i class="fa-solid fa-bookmark text-gold" style="font-size:0.7em;"></i> <span>${escapeHtml(sec.num)}. ${escapeHtml(sec.title.slice(0, 10))}</span>`;
+        const pillTitle = sec.title.length > 12 ? sec.title.slice(0, 11) + '…' : sec.title;
+        pill.innerHTML = `<i class="fa-solid fa-bookmark text-gold" style="font-size:0.7em;"></i> <span>${escapeHtml(sec.num)}. ${escapeHtml(pillTitle)}</span>`;
         pill.addEventListener('click', () => {
           DOM.sectionNavPills.querySelectorAll('.section-nav-pill').forEach(p => {
             p.classList.remove('active');
@@ -612,7 +829,7 @@
         sec.paragraphs.forEach(p => {
           const li = document.createElement('li');
           li.className = 'section-point-item';
-          li.innerHTML = formatLectureParagraph(p, lesson);
+          li.innerHTML = formatLectureParagraph(p, lesson, sec);
           pointsList.appendChild(li);
         });
         card.appendChild(pointsList);
@@ -838,7 +1055,7 @@
   // ─────────────────────────────────────────────
   //  FILL-IN-BLANKS ENGINE (P1-3: data-driven)
   // ─────────────────────────────────────────────
-  function formatLectureParagraph(text, lesson) {
+  function formatLectureParagraph(text, lesson, sec) {
     if (!text) return '';
 
     // Clean control characters
@@ -849,38 +1066,47 @@
       .replace(/\n\s*\n/g, '<br><br>')
       .replace(/\n/g, '<br>');
 
-    // P1-3: Data-driven blank detection — use slides' textLines with full-width spaces
-    // Pattern 1: Lines from slides that have 　　　 (ideographic spaces as blanks)
-    if (lesson && lesson.slides) {
-      lesson.slides.forEach(slide => {
-        (slide.textLines || []).forEach(line => {
-          // Detect fill-in pattern: text before blank spaces, then more text
-          const blankPattern = /([^\u3000]+?)\u3000{2,}([^\u3000]*)/g;
-          let bm;
-          while ((bm = blankPattern.exec(line)) !== null) {
-            // The "blank" in slide text is marked by full-width spaces
-            // Try to find an adjacent slide that has the answer
-            const before = bm[1].trim();
-            const after = bm[2].trim();
-            if (before.length >= 2 && before.length <= 20) {
-              // Escape for HTML and replace in cleaned text
-              const escaped = before.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-              try {
-                const re = new RegExp(escaped, 'g');
-                cleaned = cleaned.replace(re, createBlankSpan(before));
-              } catch(e) { /* ignore */ }
-            }
+    // Priority 1: Data-driven keyBlanks from curated curriculum section
+    const blanks = (sec && Array.isArray(sec.keyBlanks)) ? [...sec.keyBlanks] : [];
+
+    // Support explicit markers 【填空：xxx】 or {{xxx}}
+    cleaned = cleaned.replace(/【填空：([^】]+)】/g, (m, p1) => {
+      if (!blanks.includes(p1)) blanks.push(p1);
+      return p1;
+    });
+    cleaned = cleaned.replace(/\{\{([^}]+)\}\}/g, (m, p1) => {
+      if (!blanks.includes(p1)) blanks.push(p1);
+      return p1;
+    });
+
+    if (blanks.length > 0) {
+      // Deduplicate and sort by length descending to match longer phrases first
+      const uniqueBlanks = Array.from(new Set(blanks)).filter(b => typeof b === 'string' && b.trim().length > 0);
+      uniqueBlanks.sort((a, b) => b.length - a.length);
+
+      const tokens = [];
+      uniqueBlanks.forEach((blank, idx) => {
+        const trimmed = blank.trim();
+        const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        try {
+          const re = new RegExp(escaped, 'g');
+          if (re.test(cleaned)) {
+            const token = `__BLESS_BLANK_${idx}__`;
+            tokens.push({ token, blank: trimmed });
+            cleaned = cleaned.replace(re, token);
           }
-        });
+        } catch (e) { /* ignore regex error */ }
+      });
+
+      // Substitute tokens with HTML blank spans
+      tokens.forEach(({ token, blank }) => {
+        cleaned = cleaned.split(token).join(createBlankSpan(blank));
       });
     }
 
-    // Pattern 2: Direct blank markers in PDF text (various forms)
+    // Direct blank markers in PDF text (various forms)
     cleaned = cleaned.replace(/_{3,}/g, () => createBlankSpan('　　　'));
     cleaned = cleaned.replace(/\u3000{2,}/g, () => createBlankSpan('　　　'));
-
-    // Pattern 3: 【填空：answer】 explicit markers
-    cleaned = cleaned.replace(/【填空：([^】]+)】/g, (m, p1) => createBlankSpan(p1));
 
     return cleaned;
   }
@@ -897,10 +1123,18 @@
   function updateBlanksDisplay() {
     DOM.lectureScrollContent.querySelectorAll('.blank-answer').forEach(b => {
       b.classList.toggle('masked', state.isMasked);
+      if (!state.isMasked) {
+        b.classList.remove('revealed');
+      }
       b.onclick = function (e) {
         e.stopPropagation();
-        this.classList.remove('masked');
-        this.classList.add('revealed');
+        if (this.classList.contains('masked')) {
+          this.classList.remove('masked');
+          this.classList.add('revealed');
+        } else {
+          this.classList.add('masked');
+          this.classList.remove('revealed');
+        }
       };
       b.onkeydown = function(e) {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -1426,7 +1660,9 @@
   // ─────────────────────────────────────────────
   function safeCopy(text, successMsg) {
     try {
-      navigator.clipboard.writeText(text).then(() => alert(successMsg || '已複製！')).catch(() => {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(successMsg || '已成功複製到剪貼簿！', 'fa-copy');
+      }).catch(() => {
         fallbackCopy(text, successMsg);
       });
     } catch (e) {
@@ -1444,9 +1680,9 @@
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      alert(successMsg || '已複製！');
+      showToast(successMsg || '已成功複製到剪貼簿！', 'fa-copy');
     } catch(e) {
-      alert('複製失敗，請手動選取文字複製。');
+      showToast('複製失敗，請手動選取文字複製。', 'fa-triangle-exclamation');
     }
   }
 
@@ -1490,9 +1726,98 @@
   //  BIND EVENTS
   // ─────────────────────────────────────────────
   function bindEvents() {
-    // Theme & Font
+    // Theme & Reading Settings
     DOM.themeToggleBtn.addEventListener('click', cycleTheme);
-    DOM.fontScaleBtn.addEventListener('click', cycleFontScale);
+    DOM.fontScaleBtn.addEventListener('click', openReadingSettings);
+
+    // Mobile Drawer Controls
+    if (DOM.mobileMenuBtn) DOM.mobileMenuBtn.addEventListener('click', toggleMobileDrawer);
+    if (DOM.closeSidebarBtn) DOM.closeSidebarBtn.addEventListener('click', closeMobileDrawer);
+    if (DOM.sidebarBackdrop) DOM.sidebarBackdrop.addEventListener('click', closeMobileDrawer);
+
+    // Mobile View Switcher
+    if (DOM.viewSwitchBtns) {
+      DOM.viewSwitchBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          setMobileView(btn.dataset.view);
+        });
+      });
+    }
+
+    // Mobile Bottom Dock Controls
+    if (DOM.dockMenuBtn) DOM.dockMenuBtn.addEventListener('click', openMobileDrawer);
+    if (DOM.dockLectureBtn) DOM.dockLectureBtn.addEventListener('click', () => setMobileView('lecture'));
+    if (DOM.dockSlideBtn) DOM.dockSlideBtn.addEventListener('click', () => setMobileView('slides'));
+    if (DOM.dockAudioBtn) DOM.dockAudioBtn.addEventListener('click', toggleMasterAudio);
+    if (DOM.dockSettingsBtn) DOM.dockSettingsBtn.addEventListener('click', openReadingSettings);
+
+    // Reading Settings Modal Controls
+    if (DOM.closeReadingSettingsBtn) DOM.closeReadingSettingsBtn.addEventListener('click', closeReadingSettings);
+    if (DOM.applySettingsCloseBtn) DOM.applySettingsCloseBtn.addEventListener('click', closeReadingSettings);
+    if (DOM.readingSettingsModal) {
+      DOM.readingSettingsModal.addEventListener('click', e => {
+        if (e.target === DOM.readingSettingsModal) closeReadingSettings();
+      });
+    }
+
+    // Font Size Stepper & Slider
+    if (DOM.fontSizeButtons) {
+      DOM.fontSizeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.fontSize = parseInt(btn.dataset.size, 10);
+          applyReadingSettings();
+        });
+      });
+    }
+
+    if (DOM.fontSizeSlider) {
+      DOM.fontSizeSlider.addEventListener('input', e => {
+        state.fontSize = parseInt(e.target.value, 10);
+        applyReadingSettings();
+      });
+    }
+
+    // Line Height Stepper
+    if (DOM.lineHeightButtons) {
+      DOM.lineHeightButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.lineHeight = parseFloat(btn.dataset.lh);
+          applyReadingSettings();
+        });
+      });
+    }
+
+    // Font Family Stepper
+    if (DOM.fontFamilyButtons) {
+      DOM.fontFamilyButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.fontFamily = btn.dataset.ff;
+          applyReadingSettings();
+        });
+      });
+    }
+
+    // Theme Selector Buttons
+    if (DOM.themeSelectButtons) {
+      DOM.themeSelectButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          setThemeByName(btn.dataset.thm);
+        });
+      });
+    }
+
+    // Reset Settings
+    if (DOM.resetSettingsBtn) {
+      DOM.resetSettingsBtn.addEventListener('click', () => {
+        state.fontSize = 17;
+        state.lineHeight = 1.85;
+        state.fontFamily = 'sans';
+        state.themeIndex = 0;
+        applyReadingSettings();
+        applyTheme();
+        showToast('已恢復預設排版與色調', 'fa-rotate-left');
+      });
+    }
 
     // Brand / Home
     DOM.brandHomeBtn.addEventListener('click', () => {
@@ -1626,8 +1951,9 @@
       // Allow typing in inputs
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
         if (e.key === 'Escape') {
-          if (DOM.searchModal.style.display !== 'none') closeSearch();
-          if (DOM.toolkitModal.style.display !== 'none') closeToolkit();
+          if (DOM.searchModal && DOM.searchModal.style.display !== 'none') closeSearch();
+          if (DOM.toolkitModal && DOM.toolkitModal.style.display !== 'none') closeToolkit();
+          if (state.isSettingsOpen) closeReadingSettings();
         }
         return;
       }
@@ -1640,7 +1966,6 @@
           setSlide(state.activeSlideIndex + 1, 'next');
           break;
         case ' ':
-          // P1-4 FIX: Space only advances slides in presenter mode
           if (state.isPresenterOpen) {
             e.preventDefault();
             setSlide(state.activeSlideIndex + 1, 'next');
@@ -1654,10 +1979,20 @@
         case 'g': case 'G':
           if (!e.ctrlKey && !e.metaKey) toggleGridView();
           break;
+        case 'm': case 'M':
+          if (!e.ctrlKey && !e.metaKey) toggleMask();
+          break;
+        case 'a': case 'A':
+          if (!e.ctrlKey && !e.metaKey) {
+            state.isSettingsOpen ? closeReadingSettings() : openReadingSettings();
+          }
+          break;
         case 'Escape':
           if (state.isPresenterOpen) closePresenter();
-          if (DOM.searchModal.style.display !== 'none') closeSearch();
-          if (DOM.toolkitModal.style.display !== 'none') closeToolkit();
+          if (state.isSettingsOpen) closeReadingSettings();
+          if (state.isDrawerOpen) closeMobileDrawer();
+          if (DOM.searchModal && DOM.searchModal.style.display !== 'none') closeSearch();
+          if (DOM.toolkitModal && DOM.toolkitModal.style.display !== 'none') closeToolkit();
           break;
         case 'k': case 'K':
           if (e.ctrlKey || e.metaKey) { e.preventDefault(); openSearch(); }

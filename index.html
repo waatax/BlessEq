@@ -26,6 +26,11 @@
   <!-- Top Header Navigation -->
   <header class="biblia-header" role="banner">
     <div class="header-container">
+      <!-- Mobile Menu Button (Drawer Trigger on <= 900px) -->
+      <button class="btn-icon mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="開啟或收合課程目錄抽屜" aria-expanded="false" title="開啟課程目錄">
+        <i class="fa-solid fa-bars" aria-hidden="true"></i>
+      </button>
+
       <!-- Brand Logo (semantic button for home navigation) -->
       <button class="brand" id="brandHomeBtn" aria-label="返回課程儀表板總覽首頁" title="返回總覽首頁">
         <div class="brand-icon" aria-hidden="true">
@@ -66,18 +71,24 @@
           <i class="fa-solid fa-eye-slash" id="maskIcon" aria-hidden="true"></i>
         </button>
 
-        <!-- Font Size Scale -->
-        <button class="btn-icon" id="fontScaleBtn" type="button" aria-label="放大閱讀字體" title="放大閱讀字體 (循環切換：標準 → 大 → 超大)">
+        <!-- Reading & Font Settings Modal Trigger -->
+        <button class="btn-icon" id="fontScaleBtn" type="button" aria-label="開啟閱讀排版與字級設定" title="閱讀排版與字級設定 (A)">
           <i class="fa-solid fa-font" aria-hidden="true"></i>
         </button>
 
-        <!-- Theme Toggle (Light / Sepia / Dark) -->
-        <button class="btn-icon" id="themeToggleBtn" type="button" aria-label="切換主題模式：日光 / 古卷 / 暗夜" title="切換主題：日光 → 古卷護眼 → 暗夜">
+        <!-- Theme Toggle (Light / Sepia / Sage / Dark) -->
+        <button class="btn-icon" id="themeToggleBtn" type="button" aria-label="切換主題模式：日光 / 古卷 / 青竹 / 暗夜" title="切換主題：日光 → 古卷柔光 → 青竹護眼 → 暗夜沉浸">
           <i class="fa-solid fa-sun" id="themeIcon" aria-hidden="true"></i>
         </button>
       </div>
     </div>
   </header>
+
+  <!-- Top Reading Progress Indicator -->
+  <div class="reading-progress-bar" id="readingProgressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="本課閱讀進度"></div>
+
+  <!-- Mobile Offcanvas Backdrop -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
 
   <!-- Category Filter Bar -->
   <nav class="curriculum-tabs-bar" aria-label="課程分類篩選">
@@ -98,16 +109,21 @@
   </nav>
 
   <!-- Main Application Layout -->
-  <div class="app-layout">
+  <div class="app-layout" id="appLayout" data-mobile-view="lecture">
 
-    <!-- Left Sidebar: Curriculum List -->
-    <aside class="sidebar-curriculum" aria-label="裝備課程目錄">
+    <!-- Left Sidebar: Curriculum List (Desktop sticky / Mobile Offcanvas Drawer) -->
+    <aside class="sidebar-curriculum" id="sidebarCurriculum" aria-label="裝備課程目錄">
       <div class="sidebar-header">
         <div class="sidebar-title">
           <i class="fa-solid fa-scroll text-gold" aria-hidden="true"></i>
           <span>裝備課程目錄</span>
         </div>
-        <span class="brand-badge" id="lessonCountBadge" aria-live="polite">17 門課</span>
+        <div class="sidebar-header-actions">
+          <span class="brand-badge" id="lessonCountBadge" aria-live="polite">17 門課</span>
+          <button class="btn-icon mobile-sidebar-close" id="closeSidebarBtn" type="button" aria-label="關閉課程目錄" title="關閉目錄">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
+        </div>
       </div>
       <div class="lessons-list" id="lessonsContainer" role="list" aria-label="課程列表">
         <!-- Dynamically rendered by app.js -->
@@ -161,6 +177,22 @@
           </select>
         </div>
       </section>
+
+      <!-- Mobile Segmented View Switcher (Visible on mobile/tablet <= 900px) -->
+      <div class="mobile-view-switcher" id="mobileViewSwitcher" role="tablist" aria-label="學習模式切換">
+        <button class="view-switch-btn active" data-view="lecture" role="tab" aria-selected="true" id="switchLectureBtn">
+          <i class="fa-solid fa-book-open" aria-hidden="true"></i>
+          <span>講義述說</span>
+        </button>
+        <button class="view-switch-btn" data-view="slides" role="tab" aria-selected="false" id="switchSlidesBtn">
+          <i class="fa-regular fa-image" aria-hidden="true"></i>
+          <span>簡報投影</span>
+        </button>
+        <button class="view-switch-btn" data-view="dual" role="tab" aria-selected="false" id="switchDualBtn">
+          <i class="fa-solid fa-table-columns" aria-hidden="true"></i>
+          <span>雙軌對照</span>
+        </button>
+      </div>
 
       <!-- Dual Pane Study Workspace: Slide Deck (Left) & Lecture Notes (Right) -->
       <div class="dual-pane-container">
@@ -568,6 +600,147 @@
       </div>
     </div>
   </div>
+
+  <!-- Reading & Typography Settings Modal -->
+  <div class="modal-backdrop" id="readingSettingsModal"
+       role="dialog" aria-modal="true"
+       aria-labelledby="readingSettingsTitle"
+       style="display:none;">
+    <div class="modal-content reading-settings-modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="readingSettingsTitle">
+          <i class="fa-solid fa-sliders text-gold" aria-hidden="true"></i>
+          <span>閱讀舒適度與字級排版設定</span>
+        </div>
+        <button class="btn-icon" id="closeReadingSettingsBtn" type="button" aria-label="關閉排版設定視窗">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="modal-body reading-settings-body">
+
+        <!-- 1. Color Themes -->
+        <div class="setting-group">
+          <label class="setting-label">
+            <i class="fa-solid fa-palette text-gold" aria-hidden="true"></i>
+            <span>閱讀色調體系 (舒適護眼)</span>
+          </label>
+          <div class="theme-select-grid" role="radiogroup" aria-label="選擇閱讀主題色調">
+            <button class="theme-select-btn" data-thm="light" role="radio" aria-checked="false" type="button" title="日光白 · 典雅羊皮紙">
+              <span class="theme-swatch theme-swatch--light"></span>
+              <span class="theme-name">日光羊皮</span>
+            </button>
+            <button class="theme-select-btn" data-thm="sepia" role="radio" aria-checked="false" type="button" title="古卷黃 · 柔光護眼">
+              <span class="theme-swatch theme-swatch--sepia"></span>
+              <span class="theme-name">古卷柔光</span>
+            </button>
+            <button class="theme-select-btn" data-thm="sage" role="radio" aria-checked="false" type="button" title="青竹綠 · 護眼綠洲">
+              <span class="theme-swatch theme-swatch--sage"></span>
+              <span class="theme-name">青竹晨曦</span>
+            </button>
+            <button class="theme-select-btn" data-thm="dark" role="radio" aria-checked="false" type="button" title="黑曜石 · 暗夜沉浸">
+              <span class="theme-swatch theme-swatch--dark"></span>
+              <span class="theme-name">黑曜暗夜</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. Font Size Scaling -->
+        <div class="setting-group">
+          <div class="setting-label-row">
+            <label class="setting-label" for="fontSizeSlider">
+              <i class="fa-solid fa-text-height text-gold" aria-hidden="true"></i>
+              <span>講義研讀字級大小</span>
+            </label>
+            <span class="setting-value-badge" id="fontSizeDisplay">標準 (17px)</span>
+          </div>
+          <div class="font-size-stepper" role="group" aria-label="字體大小階梯">
+            <button class="btn-secondary stepper-btn font-size-btn" data-size="15" type="button">精簡 15</button>
+            <button class="btn-secondary stepper-btn font-size-btn" data-size="17" type="button">標準 17</button>
+            <button class="btn-secondary stepper-btn font-size-btn" data-size="19" type="button">舒適 19</button>
+            <button class="btn-secondary stepper-btn font-size-btn" data-size="22" type="button">特大 22</button>
+            <button class="btn-secondary stepper-btn font-size-btn" data-size="25" type="button">尊長 25</button>
+          </div>
+          <input type="range" class="setting-range-slider" id="fontSizeSlider" min="14" max="26" step="1" value="17" aria-label="細調字級滑桿">
+        </div>
+
+        <!-- 3. Line Spacing -->
+        <div class="setting-group">
+          <label class="setting-label">
+            <i class="fa-solid fa-align-left text-gold" aria-hidden="true"></i>
+            <span>閱讀行距舒暢度</span>
+          </label>
+          <div class="line-height-group" role="group" aria-label="選擇行距">
+            <button class="btn-secondary stepper-btn line-height-btn" data-lh="1.6" type="button">緊湊 1.6x</button>
+            <button class="btn-secondary stepper-btn line-height-btn active" data-lh="1.85" type="button">標準 1.85x</button>
+            <button class="btn-secondary stepper-btn line-height-btn" data-lh="2.1" type="button">寬鬆 2.1x</button>
+          </div>
+        </div>
+
+        <!-- 4. Font Style (Serif vs Sans) -->
+        <div class="setting-group">
+          <label class="setting-label">
+            <i class="fa-solid fa-font text-gold" aria-hidden="true"></i>
+            <span>講義字體風格</span>
+          </label>
+          <div class="font-family-group" role="group" aria-label="選擇字體風格">
+            <button class="btn-secondary stepper-btn font-family-btn active" data-ff="sans" type="button">思源黑體 (現代清晰)</button>
+            <button class="btn-secondary stepper-btn font-family-btn" data-ff="serif" type="button">思源宋體 (古典聖言)</button>
+          </div>
+        </div>
+
+        <!-- 5. Live Preview Card -->
+        <div class="setting-group">
+          <label class="setting-label">
+            <i class="fa-regular fa-eye text-gold" aria-hidden="true"></i>
+            <span>即時閱讀預覽效果</span>
+          </label>
+          <div class="reading-preview-card" id="readingPreviewCard">
+            <div class="preview-citation">使徒行傳 二十二15</div>
+            <div class="preview-text" id="previewText">「因為你要將所看見的，所聽見的，對着萬人為他作見證。」</div>
+            <div class="preview-note">幸福門訓核心：家常小菜勝過滿漢全席，真實生命的翻轉最具穿透力！</div>
+          </div>
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div class="setting-actions">
+          <button class="btn-secondary" id="resetSettingsBtn" type="button">
+            <i class="fa-solid fa-rotate-left" aria-hidden="true"></i> 恢復預設
+          </button>
+          <button class="btn-primary" id="applySettingsCloseBtn" type="button">
+            <i class="fa-solid fa-check" aria-hidden="true"></i> 完成設定
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Toast Notification -->
+  <div class="biblia-toast" id="toastNotice" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Mobile Bottom Navigation Dock (Visible on screens <= 900px) -->
+  <nav class="mobile-bottom-dock" id="mobileBottomDock" aria-label="手機快捷操作列">
+    <button class="dock-btn" id="dockMenuBtn" type="button" aria-label="打開課程目錄">
+      <i class="fa-solid fa-list-ul" aria-hidden="true"></i>
+      <span>目錄</span>
+    </button>
+    <button class="dock-btn active" id="dockLectureBtn" type="button" aria-label="切換至講義述說">
+      <i class="fa-solid fa-book-open" aria-hidden="true"></i>
+      <span>講義</span>
+    </button>
+    <button class="dock-btn" id="dockSlideBtn" type="button" aria-label="切換至簡報投影">
+      <i class="fa-regular fa-image" aria-hidden="true"></i>
+      <span>簡報</span>
+    </button>
+    <button class="dock-btn" id="dockAudioBtn" type="button" aria-label="播放語音導讀">
+      <i class="fa-solid fa-volume-high" id="dockAudioIcon" aria-hidden="true"></i>
+      <span id="dockAudioText">導讀</span>
+    </button>
+    <button class="dock-btn" id="dockSettingsBtn" type="button" aria-label="開啟閱讀排版設定">
+      <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+      <span>排版</span>
+    </button>
+  </nav>
 
   <!-- Page Footer -->
   <footer class="biblia-footer" role="contentinfo">
