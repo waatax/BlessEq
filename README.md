@@ -4,13 +4,13 @@
 
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live%20Demo-gold?style=for-the-badge&logo=github)](http://waatax.github.io/BlessEq)
 [![Biblia Design](https://img.shields.io/badge/Design%20System-Biblia%20Sacred-8C2234?style=for-the-badge)](http://waatax.github.io/BlessEq)
-[![Modules](https://img.shields.io/badge/Equipped%20Lessons-19%20Courses-3E6348?style=for-the-badge)](http://waatax.github.io/BlessEq)
+[![Modules](https://img.shields.io/badge/Equipped%20Lessons-20%20Courses-3E6348?style=for-the-badge)](http://waatax.github.io/BlessEq)
 
 ---
 
 ## 專案簡介 (Overview)
 
-**BlessEq** 是一套專為基督徒幸福小組與門徒學校（門徒學校下）打造的頂級數位化門訓裝備學習系統。平台以 **Biblia（聖言典雅手抄本風格）** 為核心美學，完整收錄全套 **19 門裝備課程**、**470 張高畫質講義投影片**，並深度結合 **19 份門下講義全文述說教學**。
+**BlessEq** 是一套專為基督徒幸福小組與門徒學校（門徒學校下）打造的頂級數位化門訓裝備學習系統。平台以 **Biblia（聖言典雅手抄本風格）** 為核心美學，完整收錄全套 **20 門裝備課程**、**483 張高畫質講義投影片**，並深度結合 **20 份門下講義全文述說教學**。
 
 線上體驗網址：👉 **[http://waatax.github.io/BlessEq](http://waatax.github.io/BlessEq)**
 
@@ -41,9 +41,10 @@
 - **秘笈 03：如何引導 BEST 受洗（上）**（釐清受洗意義與跨越信仰門檻）
 - **秘笈 04：如何引導 BEST 受洗（下）**（諸般智慧、破除阻礙與決志關鍵）
 
-### 四、 信仰專題 (Special Topics 01 - 02)
+### 四、 信仰專題 (Special Topics 01 - 03)
 - **專題 01：祭祖的真義**（突破華人宣教最大障礙 · 從形式回歸孝道真義 · 楊錫儒牧師口述）
 - **專題 02：幸福劇場：傳福音策略行動**（完整傳福音藍圖 · 三段式幸福劇場實戰策略 · 哥林多前書四章9節）
+- **專題 03：幸福小組概論：福音引擎建造藍圖**（從策略到執行的全方位實戰手冊 · 黃金三角鍊與生命週期 · 使徒行傳五章42節）
 
 ---
 
@@ -63,11 +64,11 @@
 4. **講員投影展示模式 (Presenter Mode)**：
    - 按鍵 `F` 即可進入全螢幕 ProPresenter / Keynote 等級投影展示，內建講員專用計時器與左右鍵換頁。
 5. **講義互動挖空填空測驗 (Interactive Fill-in-the-Blanks)**：
-   - 點擊「填空測驗」或按 `M` 一鍵遮蔽 373 個核心關鍵字，點擊個別空格即可微動態揭曉解答。
+   - 點擊「填空測驗」或按 `M` 一鍵遮蔽 489 個核心關鍵字，點擊個別空格即可微動態揭曉解答。
 6. **講義語音述說導讀 (Web Speech Narration)**：
    - 整合瀏覽器語音合成 API，隨選 0.8x / 1.0x / 1.2x / 1.5x / 1.8x 語速隨身聽講義，支援章節自動連播。
 7. **智慧全文檢索系統 (Instant Search - Ctrl+K)**：
-   - 快速索引 19 門課程、470 張投影片文字與講義全文，搜尋關鍵字即時高亮並跳轉。
+   - 快速索引 20 門課程、483 張投影片文字與講義全文，搜尋關鍵字即時高亮並跳轉。
 8. **實作秘笈工具箱**：
    - 內建「3-5分鐘動人見證產生器」、「BEST 邀約及受洗引導檢核清單」與「幸福小組八週策略心法」。
 
@@ -82,18 +83,20 @@ BlessEq/
 │   └── biblia.css          # Biblia 聖言美學樣式庫（CSS 變數、響應式佈局）
 ├── js/
 │   ├── app.js              # 核心控制器（路由、投影、填空、音訊、搜尋）
-│   └── data.js             # 19 門課程完整資料集（含 470 張簡報與全文講義）
+│   └── data.js             # 20 門課程完整資料集（含 483 張簡報與全文講義）
 ├── data/
 │   └── curriculum.json     # 標準化 JSON 知識庫
 ├── PPTX/
 │   ├── 祭祖的真義.pptx     # 專題 01 投影片原始檔
-│   └── 幸福劇場.pptx       # 專題 02 投影片原始檔
+│   ├── 幸福劇場.pptx       # 專題 02 投影片原始檔
+│   └── 幸福小組概論.pptx   # 專題 03 投影片原始檔
 ├── assets/
-│   └── slides/             # 470 張 1440x810 高壓縮 WebP 投影片圖資
+│   └── slides/             # 483 張 1440x810 高壓縮 WebP 投影片圖資
 │       ├── 00/ ... 12/     # 門訓總攬與門徒必修 01-12
 │       ├── ar01/ ... ar04/ # 實作秘笈 01-04
 │       ├── sp01/           # 信仰專題 01（祭祖的真義）
-│       └── sp02/           # 信仰專題 02（幸福劇場：傳福音策略行動）
+│       ├── sp02/           # 信仰專題 02（幸福劇場：傳福音策略行動）
+│       └── sp03/           # 信仰專題 03（幸福小組概論：福音引擎建造藍圖）
 └── README.md               # 專案說明文檔
 ```
 
