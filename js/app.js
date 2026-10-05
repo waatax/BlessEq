@@ -499,7 +499,7 @@
   //  BANNER
   // ─────────────────────────────────────────────
   function renderBanner(lesson) {
-    const catLabels = { overview: '門訓總攬', core: '門徒成長必修', practical: '幸福小組實作秘笈' };
+    const catLabels = { overview: '門訓總攬', core: '門徒成長必修', practical: '幸福小組實作秘笈', special: '信仰專題' };
     DOM.bannerCategory.querySelector('span').textContent = catLabels[lesson.category] || '門訓課程';
     DOM.bannerTitle.textContent = lesson.title;
     DOM.bannerSubtitle.textContent = lesson.subtitle || '';
