@@ -1,10 +1,10 @@
 /**
  * BlessEq - PWA Service Worker
  * Provides offline capabilities, asset caching, and lightning-fast loading
- * for the 18-lesson Blessed Discipleship Training Platform.
+ * for the 19-lesson Blessed Discipleship Training Platform.
  */
 
-const CACHE_NAME = 'blesseq-v8-sacred-responsive';
+const CACHE_NAME = 'blesseq-v9-sacred-responsive';
 const CORE_ASSETS = [
   './',
   'index.html',
