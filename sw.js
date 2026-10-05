@@ -4,7 +4,7 @@
  * for the 20-lesson Blessed Discipleship Training Platform.
  */
 
-const CACHE_NAME = 'blesseq-v10-sacred-responsive';
+const CACHE_NAME = 'blesseq-v11-companion-notes';
 const CORE_ASSETS = [
   './',
   'index.html',

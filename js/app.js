@@ -45,6 +45,8 @@
     isPresenterOpen: false,
     isGridOpen: false,
     isNotesOpen: false,
+    activeNotesTab: 'prompts',
+    notesSaveTimer: null,
     // V3: Section-level micro-narration audio state
     activeSectionId: null,
     isSectionSpeaking: false,
@@ -135,11 +137,19 @@
     toggleMaskBtn: $('toggleMaskBtn'),
     maskIcon: $('maskIcon'),
     toggleMaskRightBtn: $('toggleMaskRightBtn'),
+    toggleNotesHeaderBtn: $('toggleNotesHeaderBtn'),
 
-    // Notes
+    // Notes & Tips Companion
+    personalNotesSection: $('personalNotesSection'),
     personalNotesToggle: $('personalNotesToggle'),
     personalNotesArea: $('personalNotesArea'),
     personalNotesInput: $('personalNotesInput'),
+    notesToggleStateLabel: $('notesToggleStateLabel'),
+    notesContentSelect: $('notesContentSelect'),
+    notesContentViewport: $('notesContentViewport'),
+    notesCopyContentBtn: $('notesCopyContentBtn'),
+    notesSaveStatus: $('notesSaveStatus'),
+    notesIndicatorBadge: $('notesIndicatorBadge'),
 
     // Presenter
     presenterModal: $('presenterModal'),
@@ -493,6 +503,9 @@
     renderLectureNarrative(lesson);
     restorePersonalNotes(lessonId);
     updateProgress(lessonId, state.activeSlideIndex);
+    if (state.isNotesOpen) {
+      renderNotesContent(state.activeNotesTab || 'prompts');
+    }
   }
 
   // ─────────────────────────────────────────────
@@ -562,6 +575,11 @@
 
     // Sync lecture scroll (P1-14)
     syncLectureScroll(slide);
+
+    // Sync active slide notes if notes panel is open and viewing slide notes
+    if (state.isNotesOpen && state.activeNotesTab === 'slideNotes') {
+      renderNotesContent('slideNotes');
+    }
   }
 
   function preloadAdjacentSlides(lesson, idx) {
@@ -690,7 +708,7 @@
   //  LECTURE SYNC SCROLL (P1-14)
   // ─────────────────────────────────────────────
   function syncLectureScroll(slide) {
-    if (!slide || !slide.title) return;
+    if (!slide || !slide.title || !DOM.lectureScrollContent) return;
     const titleClean = slide.title.replace(/\s+/g, '').slice(0, 6);
     const sections = DOM.lectureScrollContent.querySelectorAll('[data-section-title]');
     let bestMatch = null;
@@ -701,7 +719,10 @@
       }
     });
     if (bestMatch) {
-      bestMatch.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const parentRect = DOM.lectureScrollContent.getBoundingClientRect();
+      const targetRect = bestMatch.getBoundingClientRect();
+      const relativeTop = targetRect.top - parentRect.top + DOM.lectureScrollContent.scrollTop;
+      DOM.lectureScrollContent.scrollTo({ top: Math.max(0, relativeTop - 16), behavior: 'smooth' });
     }
   }
 
@@ -1591,24 +1612,215 @@
   }
 
   // ─────────────────────────────────────────────
-  //  PERSONAL NOTES (P2-8)
+  //  PERSONAL NOTES & COMPANION TIPS (V8 UI Overhaul)
   // ─────────────────────────────────────────────
-  function togglePersonalNotes() {
-    state.isNotesOpen = !state.isNotesOpen;
-    DOM.personalNotesToggle.setAttribute('aria-expanded', state.isNotesOpen ? 'true' : 'false');
-    DOM.personalNotesArea.hidden = !state.isNotesOpen;
-    if (state.isNotesOpen) DOM.personalNotesInput.focus();
+  function togglePersonalNotes(forceOpen) {
+    if (typeof forceOpen === 'boolean') {
+      state.isNotesOpen = forceOpen;
+    } else {
+      state.isNotesOpen = !state.isNotesOpen;
+    }
+
+    if (DOM.personalNotesToggle) {
+      DOM.personalNotesToggle.setAttribute('aria-expanded', state.isNotesOpen ? 'true' : 'false');
+    }
+    if (DOM.notesToggleStateLabel) {
+      DOM.notesToggleStateLabel.textContent = state.isNotesOpen ? '收合隱藏' : '展開瀏覽';
+    }
+    if (DOM.personalNotesArea) {
+      DOM.personalNotesArea.hidden = !state.isNotesOpen;
+    }
+    if (DOM.toggleNotesHeaderBtn) {
+      DOM.toggleNotesHeaderBtn.classList.toggle('active', state.isNotesOpen);
+      DOM.toggleNotesHeaderBtn.setAttribute('aria-pressed', state.isNotesOpen ? 'true' : 'false');
+    }
+
+    if (state.isNotesOpen) {
+      const activeTab = DOM.notesContentSelect ? DOM.notesContentSelect.value : (state.activeNotesTab || 'prompts');
+      renderNotesContent(activeTab || 'prompts');
+    }
+  }
+
+  function showNotesAutoSaveNotice() {
+    if (!DOM.notesSaveStatus) return;
+    DOM.notesSaveStatus.style.display = 'inline-flex';
+    clearTimeout(state.notesSaveTimer);
+    state.notesSaveTimer = setTimeout(() => {
+      if (DOM.notesSaveStatus) DOM.notesSaveStatus.style.display = 'none';
+    }, 2000);
+  }
+
+  function renderNotesContent(type = 'prompts') {
+    if (!DOM.notesContentViewport) return;
+    state.activeNotesTab = type;
+    const lesson = state.lessons.find(l => l.id === state.activeLessonId);
+    if (!lesson) return;
+
+    if (DOM.notesContentSelect && DOM.notesContentSelect.value !== type) {
+      DOM.notesContentSelect.value = type;
+    }
+
+    if (type === 'prompts') {
+      // 💡 課後反思與實作操練指引
+      const prompts = (lesson.reflection && lesson.reflection.length)
+        ? lesson.reflection
+        : [
+            '默想本課核心經文與關鍵字句，哪一處觀念最觸動您此時此刻的心境？',
+            '在實際服事、職場生活或人際關係中，本課信息如何指引具體的突破方向？',
+            '為幸福小組同工與最佳福音對象彼此代禱，並寫下本週具體的實踐行動清單。'
+          ];
+      DOM.notesContentViewport.innerHTML = `
+        <div class="notes-prompts-wrapper">
+          <div class="notes-section-tag"><i class="fa-solid fa-comments text-gold" aria-hidden="true"></i> 課後深思與實作操練指引</div>
+          <ul class="notes-prompts-list">
+            ${prompts.map(p => `
+              <li class="notes-prompt-item">
+                <i class="fa-solid fa-circle-dot" aria-hidden="true"></i>
+                <span>${escapeHtml(p)}</span>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      `;
+    } else if (type === 'slideNotes') {
+      // 📌 當前投影片備忘與重點提要
+      const slideIdx = state.activeSlideIndex;
+      const slide = lesson.slides ? lesson.slides[slideIdx - 1] : null;
+      if (!slide) {
+        DOM.notesContentViewport.innerHTML = `<p class="notes-empty">本頁尚無投影片資訊。</p>`;
+        return;
+      }
+      const title = slide.title || `第 ${slideIdx} 張投影片`;
+      const notes = (slide.notes && slide.notes.trim()) ? slide.notes.trim() : '此頁講員未特別設定備忘文字，請參考上方投影片核心要點。';
+      const bullets = (slide.textLines || []).filter(l => l.trim().length > 0 && l.trim() !== (slide.title || '').trim());
+
+      DOM.notesContentViewport.innerHTML = `
+        <div class="notes-slide-card">
+          <div class="notes-slide-header">
+            <span class="notes-slide-title">
+              <i class="fa-regular fa-image text-gold" aria-hidden="true"></i>
+              投影片 ${slideIdx} / ${lesson.slideCount} · ${escapeHtml(title)}
+            </span>
+            <div class="notes-slide-nav">
+              <button class="btn-secondary stepper-btn" id="notesSlidePrevBtn" type="button" title="上一張投影片備忘" ${slideIdx <= 1 ? 'disabled' : ''}>
+                <i class="fa-solid fa-chevron-left"></i> 上一張
+              </button>
+              <button class="btn-secondary stepper-btn" id="notesSlideNextBtn" type="button" title="下一張投影片備忘" ${slideIdx >= lesson.slideCount ? 'disabled' : ''}>
+                下一張 <i class="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+          ${slide.notes ? `
+            <div class="notes-speaker-box">
+              <strong><i class="fa-regular fa-comment-dots text-gold" aria-hidden="true"></i> 講員備忘筆記：</strong>
+              <p>${escapeHtml(notes)}</p>
+            </div>
+          ` : ''}
+          ${bullets.length > 0 ? `
+            <div class="notes-bullets-box">
+              <strong><i class="fa-solid fa-list-ul text-gold" aria-hidden="true"></i> 重點提要：</strong>
+              <ul class="notes-bullet-list">
+                ${bullets.map(b => `<li>${escapeHtml(b)}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      const prevBtn = document.getElementById('notesSlidePrevBtn');
+      const nextBtn = document.getElementById('notesSlideNextBtn');
+      if (prevBtn) prevBtn.addEventListener('click', () => setSlide(slideIdx - 1, 'prev'));
+      if (nextBtn) nextBtn.addEventListener('click', () => setSlide(slideIdx + 1, 'next'));
+
+    } else if (type === 'keyVerses') {
+      // 📜 本課核心經文金句速查
+      const verses = lesson.keyVerses || [];
+      if (verses.length === 0) {
+        DOM.notesContentViewport.innerHTML = `<p class="notes-empty">本課講義內文已融入聖言真理，無獨立索引經文。</p>`;
+        return;
+      }
+      DOM.notesContentViewport.innerHTML = `
+        <div class="notes-verses-wrapper">
+          <div class="notes-section-tag"><i class="fa-solid fa-book-bible text-gold" aria-hidden="true"></i> 本課精選核心聖經經文 (${verses.length} 處)</div>
+          <div class="notes-verses-grid">
+            ${verses.map(v => `
+              <div class="notes-verse-card">
+                <i class="fa-solid fa-bookmark text-gold" aria-hidden="true"></i>
+                <span class="notes-verse-text">${escapeHtml(v)}</span>
+                <button class="notes-verse-copy-btn btn-icon-sm" data-verse="${escapeHtml(v)}" type="button" title="複製此節經文">
+                  <i class="fa-regular fa-copy"></i>
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+
+      DOM.notesContentViewport.querySelectorAll('.notes-verse-copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          safeCopy(btn.dataset.verse, '經文已成功複製到剪貼簿！');
+        });
+      });
+
+    } else if (type === 'myNotes') {
+      // 📝 我的個人研經反思筆記
+      const key = `blesseq_note_${lesson.id}`;
+      const saved = safeStorage('get', key) || '';
+      DOM.notesContentViewport.innerHTML = `
+        <div class="notes-editor-wrapper">
+          <div class="notes-editor-header">
+            <span class="notes-editor-hint"><i class="fa-solid fa-pen-nib text-gold" aria-hidden="true"></i> 記錄您在「${escapeHtml(lesson.title)}」的領受、反思或代禱事項 (自動同步存檔)：</span>
+            <span class="notes-char-count" id="notesCharCount">${saved.length} 字</span>
+          </div>
+          <textarea id="personalNotesInput"
+                    class="notes-textarea"
+                    aria-label="個人反思筆記輸入框，內容自動儲存"
+                    placeholder="在此記錄您對本課的反思、禱告事項或行動計劃... (自動儲存)">${escapeHtml(saved)}</textarea>
+          <div class="notes-editor-footer">
+            <button class="btn-secondary stepper-btn" id="notesClearBtn" type="button" title="清空本課筆記">
+              <i class="fa-regular fa-trash-can"></i> 清除
+            </button>
+            <span class="notes-autosave-tip"><i class="fa-solid fa-shield-halved text-gold"></i> 自動安全儲存於您的瀏覽器本地快取</span>
+          </div>
+        </div>
+      `;
+
+      const input = document.getElementById('personalNotesInput');
+      const count = document.getElementById('notesCharCount');
+      const clearBtn = document.getElementById('notesClearBtn');
+      if (input) {
+        input.addEventListener('input', () => {
+          safeStorage('set', key, input.value);
+          if (count) count.textContent = `${input.value.length} 字`;
+          showNotesAutoSaveNotice();
+        });
+      }
+      if (clearBtn && input) {
+        clearBtn.addEventListener('click', () => {
+          if (confirm('確定要清空本課的個人筆記紀錄嗎？')) {
+            input.value = '';
+            safeStorage('set', key, '');
+            if (count) count.textContent = '0 字';
+            showToast('個人筆記已清空');
+          }
+        });
+      }
+    }
   }
 
   function restorePersonalNotes(lessonId) {
-    const key = `blesseq_note_${lessonId}`;
-    const saved = safeStorage('get', key) || '';
-    DOM.personalNotesInput.value = saved;
+    if (state.isNotesOpen) {
+      renderNotesContent(state.activeNotesTab || 'prompts');
+    }
   }
 
   function savePersonalNote() {
-    const key = `blesseq_note_${state.activeLessonId}`;
-    safeStorage('set', key, DOM.personalNotesInput.value);
+    const input = document.getElementById('personalNotesInput');
+    if (input) {
+      const key = `blesseq_note_${state.activeLessonId}`;
+      safeStorage('set', key, input.value);
+      showNotesAutoSaveNotice();
+    }
   }
 
   // ─────────────────────────────────────────────
@@ -1938,9 +2150,29 @@
       safeCopy(DOM.lectureScrollContent.innerText, '講義重點與述說內容已成功複製！');
     });
 
-    // Personal Notes (P2-8)
-    DOM.personalNotesToggle.addEventListener('click', togglePersonalNotes);
-    DOM.personalNotesInput.addEventListener('input', savePersonalNote);
+    // Notes & Tips Companion (V8)
+    if (DOM.personalNotesToggle) {
+      DOM.personalNotesToggle.addEventListener('click', () => togglePersonalNotes());
+    }
+    if (DOM.toggleNotesHeaderBtn) {
+      DOM.toggleNotesHeaderBtn.addEventListener('click', () => togglePersonalNotes());
+    }
+    if (DOM.notesContentSelect) {
+      DOM.notesContentSelect.addEventListener('change', () => {
+        renderNotesContent(DOM.notesContentSelect.value);
+      });
+    }
+    if (DOM.notesCopyContentBtn) {
+      DOM.notesCopyContentBtn.addEventListener('click', () => {
+        if (!DOM.notesContentViewport) return;
+        const text = DOM.notesContentViewport.innerText.trim();
+        if (text) {
+          safeCopy(text, '目前提示與筆記內容已複製！');
+        } else {
+          showToast('目前尚無可複製內容');
+        }
+      });
+    }
 
     // Swipe Gestures (P1-13)
     addSwipe(DOM.slideStageMain);

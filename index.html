@@ -275,7 +275,12 @@
               <button class="btn-secondary" id="toggleMaskRightBtn" type="button" aria-label="切換講義填空測驗模式" aria-pressed="false" title="切換挖空填空">
                 <i class="fa-solid fa-pen-clip" aria-hidden="true"></i> <span class="btn-text">填空測驗</span>
               </button>
+              <button class="btn-secondary" id="toggleNotesHeaderBtn" type="button" aria-label="切換反思提示與筆記欄位" title="展開/收合提示與筆記">
+                <i class="fa-solid fa-lightbulb text-gold" aria-hidden="true"></i> <span class="btn-text">提示與筆記</span>
+              </button>
             </div>
+          </div>
+
           <!-- Section Mini-TOC Nav Pills (V3: Biblia Sacred Study Navigator) -->
           <div class="section-nav-pills" id="sectionNavPills" role="tablist" aria-label="講義章節微導航">
             <!-- Dynamically populated section pills -->
@@ -286,17 +291,54 @@
             <!-- Dynamically populated from curriculum data -->
           </div>
 
-          <!-- Personal Notes Box (P2-8) -->
+          <!-- Personal Notes & Tips Companion Panel (預設隱藏/收合，展開後提供下拉選單與瀏覽內容) -->
           <div class="personal-notes-section" id="personalNotesSection">
-            <button class="personal-notes-toggle" id="personalNotesToggle" type="button" aria-expanded="false" aria-controls="personalNotesArea">
-              <i class="fa-solid fa-pen-to-square text-gold" aria-hidden="true"></i>
-              <span>個人反思筆記</span>
-              <i class="fa-solid fa-chevron-down note-toggle-arrow" aria-hidden="true"></i>
+            <button class="personal-notes-toggle" id="personalNotesToggle" type="button" aria-expanded="false" aria-controls="personalNotesArea" title="點擊展開/收合課堂提示與個人筆記">
+              <div class="notes-toggle-left">
+                <i class="fa-solid fa-lightbulb text-gold" aria-hidden="true"></i>
+                <span class="notes-toggle-title">課堂提示與反思筆記</span>
+                <span class="notes-count-badge" id="notesIndicatorBadge">提示 · 備忘 · 經文 · 筆記</span>
+              </div>
+              <div class="notes-toggle-right">
+                <span class="notes-toggle-state-label" id="notesToggleStateLabel">展開瀏覽</span>
+                <i class="fa-solid fa-chevron-down note-toggle-arrow" aria-hidden="true"></i>
+              </div>
             </button>
+
+            <!-- Expanded Panel (Hidden by default) -->
             <div class="personal-notes-area" id="personalNotesArea" hidden>
-              <textarea id="personalNotesInput"
-                        aria-label="個人反思筆記輸入框，內容自動儲存"
-                        placeholder="在此記錄您對本課的反思、禱告事項或行動計劃... (自動儲存)"></textarea>
+              <!-- Dropdown Selector Toolbar (下拉按鈕) -->
+              <div class="notes-toolbar">
+                <div class="notes-select-wrapper">
+                  <label for="notesContentSelect" class="notes-select-label">
+                    <i class="fa-solid fa-list-check text-gold" aria-hidden="true"></i>
+                    <span>瀏覽項目：</span>
+                  </label>
+                  <div class="custom-select-box">
+                    <select id="notesContentSelect" class="notes-content-dropdown" aria-label="選擇瀏覽提示與筆記項目">
+                      <option value="prompts">💡 課後反思與實作操練指引</option>
+                      <option value="slideNotes">📌 當前投影片備忘與重點提要</option>
+                      <option value="keyVerses">📜 本課核心經文金句速查</option>
+                      <option value="myNotes">📝 我的個人研經反思筆記</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down select-dropdown-arrow" aria-hidden="true"></i>
+                  </div>
+                </div>
+
+                <div class="notes-toolbar-actions" id="notesToolbarActions">
+                  <button class="btn-secondary notes-action-btn" id="notesCopyContentBtn" type="button" title="複製目前瀏覽內容">
+                    <i class="fa-regular fa-copy" aria-hidden="true"></i> <span class="action-btn-text">複製內容</span>
+                  </button>
+                  <span class="notes-save-status" id="notesSaveStatus" style="display:none;">
+                    <i class="fa-solid fa-check text-gold" aria-hidden="true"></i> 自動已儲存
+                  </span>
+                </div>
+              </div>
+
+              <!-- Browsable Content Container (可以正常瀏覽相關內容) -->
+              <div class="notes-content-viewport" id="notesContentViewport" role="region" aria-label="課堂提示與反思內容預覽">
+                <!-- Dynamically populated based on notesContentSelect -->
+              </div>
             </div>
           </div>
         </section>
