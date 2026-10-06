@@ -54,6 +54,12 @@
 
       <!-- Header Action Controls -->
       <div class="header-actions" role="toolbar" aria-label="工具列">
+        <!-- Scripture Memory Cards Modal Trigger -->
+        <button class="btn-secondary" id="openMemoryCardsBtn" type="button" aria-label="開啟 12週主題經文記憶卡" title="開啟 12週主題經文記憶卡 (M)">
+          <i class="fa-solid fa-layer-group text-gold" aria-hidden="true"></i>
+          <span class="btn-text">經文記憶卡</span>
+        </button>
+
         <!-- Practical Tools Modal Trigger -->
         <button class="btn-secondary" id="openToolkitBtn" type="button" aria-label="開啟實作秘笈工具箱" title="開啟實作秘笈工具箱">
           <i class="fa-solid fa-toolbox text-gold" aria-hidden="true"></i>
@@ -319,6 +325,7 @@
                       <option value="prompts">💡 課後反思與實作操練指引</option>
                       <option value="slideNotes">📌 當前投影片備忘與重點提要</option>
                       <option value="keyVerses">📜 本課核心經文金句速查</option>
+                      <option value="memoryCards">📇 門下 01-12 主題經文記憶卡</option>
                       <option value="myNotes">📝 我的個人研經反思筆記</option>
                     </select>
                     <i class="fa-solid fa-chevron-down select-dropdown-arrow" aria-hidden="true"></i>
@@ -450,6 +457,9 @@
           </button>
           <button class="tab-btn" id="toolTab8Weeks" type="button" role="tab" aria-selected="false" aria-controls="eightWeeksToolContent">
             <i class="fa-solid fa-calendar-week" aria-hidden="true"></i> 幸福小組八週策略心法
+          </button>
+          <button class="tab-btn" id="toolTabScriptures" type="button" role="tab" aria-selected="false" aria-controls="scripturesToolContent">
+            <i class="fa-solid fa-layer-group" aria-hidden="true"></i> 12週主題經文記憶卡
           </button>
         </div>
 
@@ -640,6 +650,129 @@
               <div class="week-desc">見證受洗重生的神聖榮耀，全組歡喜慶祝，無縫融入教會大家庭持續門訓！</div>
             </div>
           </div>
+        </div>
+
+        <!-- Tab 4: 12-Week Scripture Memory Cards Overview -->
+        <div id="scripturesToolContent" role="tabpanel" aria-labelledby="toolTabScriptures" class="tool-tab-panel" hidden>
+          <div class="toolkit-tip-box">
+            <strong><i class="fa-solid fa-lightbulb text-gold" aria-hidden="true"></i> 門下 12週主題背經指引：</strong>
+            把上帝的話背在腦海裡，印在心坎上！此處彙整 01 至 12 週全套核心主題背誦經文。點擊任一經文卡片即可立即開啟 3D 翻轉互動記憶卡，進行背誦測驗與語音朗誦！
+          </div>
+          <div class="toolkit-memory-cards-grid" id="toolkitMemoryGrid">
+            <!-- Dynamically populated 12 cards preview -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripture Memory Cards Fullscreen/Overlay Modal -->
+  <div class="modal-backdrop" id="memoryCardsModal"
+       role="dialog" aria-modal="true"
+       aria-labelledby="memoryCardsTitle"
+       style="display:none;">
+    <div class="modal-content memory-cards-modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="memoryCardsTitle">
+          <i class="fa-solid fa-layer-group text-gold" aria-hidden="true"></i>
+          <span>門徒學校（下）12週 主題經文記憶卡</span>
+          <span class="brand-badge memory-progress-badge" id="memoryMasteredBadge">熟記 0 / 12</span>
+        </div>
+        <button class="btn-icon" id="closeMemoryCardsBtn" type="button" aria-label="關閉經文記憶卡視窗" title="關閉經文記憶卡視窗 (ESC)">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="modal-body memory-cards-body">
+        <!-- 01 - 12 Week Pills Nav -->
+        <div class="memory-card-nav-pills" id="memoryCardNavPills" role="tablist" aria-label="選擇主題經文課堂">
+          <!-- 01 - 12 pills dynamically rendered -->
+        </div>
+
+        <!-- Mode & Tools Bar -->
+        <div class="memory-card-toolbar">
+          <div class="memory-toolbar-left">
+            <span class="memory-current-lesson-label" id="memoryLessonLabel">第 01 週 · 為主作榮耀的見證</span>
+          </div>
+          <div class="memory-toolbar-right">
+            <button class="btn-secondary stepper-btn" id="memoryToggleMaskBtn" type="button" title="切換填空挖空挑戰">
+              <i class="fa-solid fa-pen-clip text-gold"></i> <span id="memoryMaskBtnText">挖空背誦模式</span>
+            </button>
+            <button class="btn-secondary stepper-btn" id="memoryAudioBtn" type="button" title="語音聆聽經文朗誦">
+              <i class="fa-solid fa-volume-high text-gold" id="memoryAudioIcon"></i> <span id="memoryAudioText">語音朗誦</span>
+            </button>
+            <button class="btn-secondary stepper-btn" id="memoryShuffleBtn" type="button" title="隨機抽考">
+              <i class="fa-solid fa-shuffle"></i> 隨機抽考
+            </button>
+          </div>
+        </div>
+
+        <!-- 3D Flashcard Flip Scene -->
+        <div class="flashcard-scene" id="flashcardScene" title="點擊卡片或按空白鍵翻轉">
+          <div class="flashcard-card" id="flashcardElement" role="region" aria-label="經文記憶卡，點擊可翻轉">
+            <!-- Front Face -->
+            <div class="flashcard-face flashcard-front">
+              <div class="card-inner-header">
+                <span class="card-week-badge" id="cardFrontWeekBadge">第 01 週 · 主題經文</span>
+                <span class="card-hint-badge"><i class="fa-solid fa-rotate"></i> 點擊翻轉看經文</span>
+              </div>
+              <div class="card-front-center">
+                <i class="fa-solid fa-book-bible card-decor-icon" aria-hidden="true"></i>
+                <h3 class="card-citation-title" id="cardFrontCitation">使徒行傳 二十二15</h3>
+                <p class="card-topic-subtitle" id="cardFrontTopic">為主作榮耀的見證</p>
+                <div class="card-front-tags" id="cardFrontTags"></div>
+              </div>
+              <div class="card-front-footer">
+                <span class="card-flip-prompt"><i class="fa-solid fa-hand-pointer"></i> 點擊卡片 或 按空白鍵 查看經文內容</span>
+              </div>
+            </div>
+
+            <!-- Back Face -->
+            <div class="flashcard-face flashcard-back">
+              <div class="card-inner-header">
+                <span class="card-citation-badge" id="cardBackCitation">使徒行傳 二十二15</span>
+                <span class="card-hint-badge"><i class="fa-solid fa-rotate"></i> 點擊翻回正面</span>
+              </div>
+              <div class="card-back-body">
+                <blockquote class="card-scripture-quote" id="cardBackScripture">
+                  <!-- Scripture text or masked text rendered here -->
+                </blockquote>
+                <div class="card-insight-box" id="cardBackInsightBox">
+                  <strong><i class="fa-solid fa-lightbulb text-gold"></i> 門下核心心法：</strong>
+                  <span id="cardBackInsight">家常小菜勝過滿漢全席，真實生命的翻轉最具穿透力！</span>
+                </div>
+              </div>
+              <div class="card-back-footer">
+                <button class="btn-secondary stepper-btn card-copy-btn" id="cardCopyBtn" type="button" title="複製此節經文">
+                  <i class="fa-regular fa-copy"></i> 複製經文
+                </button>
+                <button class="btn-secondary stepper-btn card-jump-lesson-btn" id="cardJumpLessonBtn" type="button" title="前往此課堂深入學習">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i> 研讀此課
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Flashcard Navigation Controls Footer -->
+        <div class="memory-card-footer">
+          <button class="btn-secondary memory-nav-btn" id="memoryPrevCardBtn" type="button" title="上一張 (← 鍵)">
+            <i class="fa-solid fa-chevron-left"></i> 上一張
+          </button>
+
+          <div class="memory-mastery-controls">
+            <button class="btn-secondary memory-mastery-btn" id="memoryToggleMasteredBtn" type="button">
+              <i class="fa-regular fa-circle-check" id="memoryMasteredIcon"></i> <span id="memoryMasteredText">標記為已熟記</span>
+            </button>
+            <button class="btn-primary memory-flip-btn" id="memoryFlipActionBtn" type="button" title="翻轉卡片 (空白鍵)">
+              <i class="fa-solid fa-rotate"></i> 翻轉卡片
+            </button>
+          </div>
+
+          <button class="btn-secondary memory-nav-btn" id="memoryNextCardBtn" type="button" title="下一張 (→ 鍵)">
+            下一張 <i class="fa-solid fa-chevron-right"></i>
+          </button>
         </div>
 
       </div>

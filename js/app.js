@@ -58,6 +58,13 @@
     speechKeepAliveInterval: null,
     progress: JSON.parse(localStorage.getItem('blesseq_progress') || '{}'),
     routeInitialized: false,
+    // Scripture Memory Cards State (01-12)
+    isMemoryCardsOpen: false,
+    activeMemoryIndex: 0,
+    isMemoryMasked: false,
+    isCardFlipped: false,
+    masteredVerses: new Set(JSON.parse(localStorage.getItem('blesseq_mastered_verses') || '[]')),
+    isSpeakingVerse: false,
   };
 
   // ─────────────────────────────────────────────
@@ -204,6 +211,41 @@
 
     // Toast
     toastNotice: $('toastNotice'),
+
+    // Memory Cards (經文記憶卡 01-12)
+    openMemoryCardsBtn: $('openMemoryCardsBtn'),
+    memoryCardsModal: $('memoryCardsModal'),
+    closeMemoryCardsBtn: $('closeMemoryCardsBtn'),
+    memoryMasteredBadge: $('memoryMasteredBadge'),
+    memoryCardNavPills: $('memoryCardNavPills'),
+    memoryLessonLabel: $('memoryLessonLabel'),
+    memoryToggleMaskBtn: $('memoryToggleMaskBtn'),
+    memoryMaskBtnText: $('memoryMaskBtnText'),
+    memoryAudioBtn: $('memoryAudioBtn'),
+    memoryAudioIcon: $('memoryAudioIcon'),
+    memoryAudioText: $('memoryAudioText'),
+    memoryShuffleBtn: $('memoryShuffleBtn'),
+    flashcardScene: $('flashcardScene'),
+    flashcardElement: $('flashcardElement'),
+    cardFrontWeekBadge: $('cardFrontWeekBadge'),
+    cardFrontCitation: $('cardFrontCitation'),
+    cardFrontTopic: $('cardFrontTopic'),
+    cardFrontTags: $('cardFrontTags'),
+    cardBackCitation: $('cardBackCitation'),
+    cardBackScripture: $('cardBackScripture'),
+    cardBackInsightBox: $('cardBackInsightBox'),
+    cardBackInsight: $('cardBackInsight'),
+    cardCopyBtn: $('cardCopyBtn'),
+    cardJumpLessonBtn: $('cardJumpLessonBtn'),
+    memoryPrevCardBtn: $('memoryPrevCardBtn'),
+    memoryNextCardBtn: $('memoryNextCardBtn'),
+    memoryToggleMasteredBtn: $('memoryToggleMasteredBtn'),
+    memoryMasteredIcon: $('memoryMasteredIcon'),
+    memoryMasteredText: $('memoryMasteredText'),
+    memoryFlipActionBtn: $('memoryFlipActionBtn'),
+    toolTabScriptures: $('toolTabScriptures'),
+    scripturesToolContent: $('scripturesToolContent'),
+    toolkitMemoryGrid: $('toolkitMemoryGrid'),
   };
 
   // ─────────────────────────────────────────────
@@ -222,6 +264,8 @@
     bindEvents();
     initInteractiveChecklists();
     renderLessonList();
+    updateMemoryMasteryBadge();
+    renderToolkitMemoryGrid();
     routeFromHash();
     window.addEventListener('hashchange', routeFromHash);
     initScrollProgressBar();
@@ -233,6 +277,12 @@
   function routeFromHash() {
     const hash = window.location.hash.replace('#', '');
     if (hash) {
+      if (hash.startsWith('memory')) {
+        const parts = hash.split('/');
+        const memIdx = parts[1] ? (parseInt(parts[1], 10) - 1) : 0;
+        openMemoryCards(memIdx);
+        return;
+      }
       const [lessonId, slideStr] = hash.split('/');
       const slideIdx = parseInt(slideStr, 10) || 1;
       if (state.lessons.find(l => l.id === lessonId)) {
@@ -1805,6 +1855,83 @@
           }
         });
       }
+    } else if (type === 'memoryCards') {
+      // 🎴 門徒學校（下）12週 主題經文記憶卡速覽與研讀
+      const verses = window.BLESS_EQ_MEMORY_VERSES || [];
+      const currentWeekIdx = parseInt(lesson.id, 10) - 1;
+      const currentVerse = (currentWeekIdx >= 0 && currentWeekIdx < verses.length) ? verses[currentWeekIdx] : verses[0];
+      const isMastered = currentVerse ? state.masteredVerses.has(currentVerse.id) : false;
+
+      DOM.notesContentViewport.innerHTML = `
+        <div class="notes-memory-wrapper">
+          <div class="notes-section-tag">
+            <i class="fa-solid fa-layer-group text-gold" aria-hidden="true"></i> 
+            門徒學校（下）12週 主題經文記憶卡 (熟記進度：${state.masteredVerses.size} / 12)
+          </div>
+          ${currentVerse ? `
+            <div class="notes-memory-highlight-card" style="background:var(--bg-surface);border:1px solid var(--gold-border);border-radius:var(--radius-md);padding:1.1rem;margin-top:0.6rem;box-shadow:var(--shadow-sm);">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
+                <span class="card-week-badge">第 ${currentVerse.id} 週 · 主題經文</span>
+                <span class="brand-badge ${isMastered ? 'text-olive' : 'text-gold'}" style="font-size:0.75rem;">
+                  <i class="fa-${isMastered ? 'solid fa-check' : 'regular fa-circle'}"></i> 
+                  ${isMastered ? '已熟記' : '未熟記'}
+                </span>
+              </div>
+              <h4 style="margin:0.6rem 0 0.2rem;font-family:var(--font-serif);color:var(--gold-primary);font-size:1.2rem;">
+                ${escapeHtml(currentVerse.citation)}
+              </h4>
+              <p style="margin:0 0 0.6rem;font-size:0.92rem;color:var(--text-secondary);font-weight:600;">
+                ${escapeHtml(currentVerse.lessonTitle)}
+              </p>
+              <blockquote class="card-scripture-quote" style="margin:0.6rem 0;font-size:1.1rem;line-height:1.75;">
+                ${escapeHtml(currentVerse.text)}
+              </blockquote>
+              <div class="card-insight-box" style="margin-top:0.5rem;font-size:0.88rem;">
+                <strong><i class="fa-solid fa-lightbulb text-gold"></i> 核心心法：</strong>
+                ${escapeHtml(currentVerse.insight)}
+              </div>
+              <div style="display:flex;gap:0.5rem;margin-top:0.85rem;justify-content:flex-end;">
+                <button class="btn-primary stepper-btn" id="notesOpenFlashcardBtn" type="button" style="flex:none;padding:0.45rem 1rem;">
+                  <i class="fa-solid fa-rotate"></i> 開啟 3D 翻轉記憶卡
+                </button>
+              </div>
+            </div>
+          ` : '<p class="notes-empty">本總覽課程無獨立週次記憶卡，請點擊下方瀏覽全部 12 週主題經文。</p>'}
+          <div style="margin-top:1.1rem;display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:0.86rem;font-weight:700;color:var(--text-secondary);"><i class="fa-solid fa-list-check text-gold"></i> 全套 12 週主題經文一覽：</span>
+            <button class="btn-secondary stepper-btn" id="notesOpenAllFlashcardsBtn" type="button" style="flex:none;font-size:0.8rem;padding:0.35rem 0.75rem;">
+              <i class="fa-solid fa-layer-group"></i> 記憶卡完整視窗
+            </button>
+          </div>
+          <div class="toolkit-memory-cards-grid" style="margin-top:0.6rem;">
+            ${verses.map((v, i) => `
+              <div class="toolkit-memory-card-tile ${state.masteredVerses.has(v.id) ? 'is-mastered' : ''}" data-idx="${i}" role="button" tabindex="0">
+                <div class="toolkit-tile-header">
+                  <span class="toolkit-tile-week">第 ${v.id} 週</span>
+                  ${state.masteredVerses.has(v.id) ? '<span class="brand-badge text-olive" style="font-size:0.72rem;"><i class="fa-solid fa-check"></i> 已熟記</span>' : ''}
+                </div>
+                <div class="toolkit-tile-citation">${escapeHtml(v.citation)}</div>
+                <div class="toolkit-tile-snippet">${escapeHtml(v.text)}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+
+      const openBtn = document.getElementById('notesOpenFlashcardBtn');
+      if (openBtn && currentVerse) {
+        openBtn.addEventListener('click', () => openMemoryCards(currentWeekIdx >= 0 ? currentWeekIdx : 0));
+      }
+      const openAllBtn = document.getElementById('notesOpenAllFlashcardsBtn');
+      if (openAllBtn) {
+        openAllBtn.addEventListener('click', () => openMemoryCards(0));
+      }
+      DOM.notesContentViewport.querySelectorAll('.toolkit-memory-card-tile').forEach(tile => {
+        tile.addEventListener('click', () => {
+          const idx = parseInt(tile.dataset.idx, 10);
+          openMemoryCards(idx);
+        });
+      });
     }
   }
 
@@ -1821,6 +1948,358 @@
       safeStorage('set', key, input.value);
       showNotesAutoSaveNotice();
     }
+  }
+
+  // ─────────────────────────────────────────────
+  //  SCRIPTURE MEMORY CARDS CONTROLLER (01 - 12)
+  //  3D Flip, Recitation Blanks Mode, Mastery Tracking
+  // ─────────────────────────────────────────────
+  function getMemoryVerses() {
+    return window.BLESS_EQ_MEMORY_VERSES || [];
+  }
+
+  function openMemoryCards(targetIndex = null) {
+    const verses = getMemoryVerses();
+    if (!verses.length) {
+      showToast('經文記憶卡資料載入中，請稍候');
+      return;
+    }
+
+    if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex < verses.length) {
+      state.activeMemoryIndex = targetIndex;
+    } else {
+      // Default to current lesson if 01-12, else maintain activeMemoryIndex or 0
+      const currentLessonNum = parseInt(state.activeLessonId, 10);
+      if (!isNaN(currentLessonNum) && currentLessonNum >= 1 && currentLessonNum <= verses.length) {
+        state.activeMemoryIndex = currentLessonNum - 1;
+      } else if (state.activeMemoryIndex < 0 || state.activeMemoryIndex >= verses.length) {
+        state.activeMemoryIndex = 0;
+      }
+    }
+
+    state.isMemoryCardsOpen = true;
+    state.isCardFlipped = false;
+    if (DOM.memoryCardsModal) {
+      DOM.memoryCardsModal.style.display = 'flex';
+      trapFocus(DOM.memoryCardsModal);
+    }
+
+    renderMemoryNavPills();
+    renderMemoryCard(state.activeMemoryIndex);
+    updateMemoryMasteryBadge();
+  }
+
+  function closeMemoryCards() {
+    state.isMemoryCardsOpen = false;
+    stopSpeakingVerse();
+    if (DOM.memoryCardsModal) {
+      DOM.memoryCardsModal.style.display = 'none';
+      releaseFocus();
+    }
+    if (DOM.openMemoryCardsBtn) {
+      DOM.openMemoryCardsBtn.focus();
+    }
+  }
+
+  function renderMemoryNavPills() {
+    if (!DOM.memoryCardNavPills) return;
+    const verses = getMemoryVerses();
+    DOM.memoryCardNavPills.innerHTML = verses.map((v, i) => {
+      const isActive = i === state.activeMemoryIndex;
+      const isMastered = state.masteredVerses.has(v.id);
+      return `
+        <button class="memory-pill-btn ${isActive ? 'active' : ''} ${isMastered ? 'is-mastered' : ''}"
+                type="button"
+                data-index="${i}"
+                role="tab"
+                aria-selected="${isActive ? 'true' : 'false'}"
+                title="第 ${v.id} 週：${escapeHtml(v.lessonTitle)} (${escapeHtml(v.citation)})">
+          第 ${v.id} 週
+        </button>
+      `;
+    }).join('');
+
+    DOM.memoryCardNavPills.querySelectorAll('.memory-pill-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.index, 10);
+        state.isCardFlipped = false;
+        renderMemoryCard(idx);
+      });
+    });
+  }
+
+  function renderMemoryCard(index) {
+    const verses = getMemoryVerses();
+    if (!verses.length) return;
+    if (index < 0) index = 0;
+    if (index >= verses.length) index = verses.length - 1;
+    state.activeMemoryIndex = index;
+
+    const verse = verses[index];
+    const isMastered = state.masteredVerses.has(verse.id);
+
+    // Update Nav Pills active states
+    if (DOM.memoryCardNavPills) {
+      const pills = DOM.memoryCardNavPills.querySelectorAll('.memory-pill-btn');
+      pills.forEach((p, idx) => {
+        const active = idx === index;
+        p.classList.toggle('active', active);
+        p.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      const activePill = pills[index];
+      if (activePill && typeof activePill.scrollIntoView === 'function') {
+        activePill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+
+    // Header label
+    if (DOM.memoryLessonLabel) {
+      DOM.memoryLessonLabel.innerHTML = `第 ${verse.id} 週 · <strong>${escapeHtml(verse.lessonTitle)}</strong>`;
+    }
+
+    // Front Face
+    if (DOM.cardFrontWeekBadge) {
+      DOM.cardFrontWeekBadge.textContent = `第 ${verse.id} 週 · 主題經文`;
+    }
+    if (DOM.cardFrontCitation) {
+      DOM.cardFrontCitation.textContent = verse.citation;
+    }
+    if (DOM.cardFrontTopic) {
+      DOM.cardFrontTopic.textContent = verse.lessonTitle;
+    }
+    if (DOM.cardFrontTags) {
+      DOM.cardFrontTags.innerHTML = (verse.tags || []).map(t => `<span class="card-tag"><i class="fa-solid fa-tag"></i> ${escapeHtml(t)}</span>`).join('');
+    }
+
+    // Back Face
+    if (DOM.cardBackCitation) {
+      DOM.cardBackCitation.textContent = verse.citation;
+    }
+    if (DOM.cardBackScripture) {
+      if (state.isMemoryMasked) {
+        const html = escapeHtml(verse.maskedText).replace(/【(.*?)】/g, (match, word) => {
+          return `<span class="card-blank-word" data-word="${word}" role="button" tabindex="0" title="點擊顯示答案">${word}</span>`;
+        });
+        DOM.cardBackScripture.innerHTML = html;
+
+        DOM.cardBackScripture.querySelectorAll('.card-blank-word').forEach(blank => {
+          blank.addEventListener('click', e => {
+            e.stopPropagation();
+            blank.classList.toggle('revealed');
+          });
+          blank.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              blank.classList.toggle('revealed');
+            }
+          });
+        });
+      } else {
+        DOM.cardBackScripture.textContent = verse.text;
+      }
+    }
+    if (DOM.cardBackInsight) {
+      DOM.cardBackInsight.textContent = verse.insight;
+    }
+
+    // Mastery Button
+    if (DOM.memoryToggleMasteredBtn) {
+      DOM.memoryToggleMasteredBtn.classList.toggle('is-mastered', isMastered);
+    }
+    if (DOM.memoryMasteredIcon) {
+      DOM.memoryMasteredIcon.className = isMastered ? 'fa-solid fa-circle-check text-olive' : 'fa-regular fa-circle-check';
+    }
+    if (DOM.memoryMasteredText) {
+      DOM.memoryMasteredText.textContent = isMastered ? '已熟記（點擊取消）' : '標記為已熟記';
+    }
+
+    // Flip UI Sync
+    updateCardFlipUI();
+  }
+
+  function updateCardFlipUI() {
+    if (DOM.flashcardElement) {
+      DOM.flashcardElement.classList.toggle('is-flipped', state.isCardFlipped);
+    }
+    if (DOM.memoryFlipActionBtn) {
+      DOM.memoryFlipActionBtn.innerHTML = state.isCardFlipped
+        ? '<i class="fa-solid fa-rotate-left"></i> 翻回正面 (出處)'
+        : '<i class="fa-solid fa-rotate"></i> 翻看經文 (空白鍵)';
+    }
+  }
+
+  function flipMemoryCard() {
+    state.isCardFlipped = !state.isCardFlipped;
+    updateCardFlipUI();
+  }
+
+  function prevMemoryCard() {
+    const verses = getMemoryVerses();
+    if (!verses.length) return;
+    let prev = state.activeMemoryIndex - 1;
+    if (prev < 0) prev = verses.length - 1;
+    state.isCardFlipped = false;
+    renderMemoryCard(prev);
+  }
+
+  function nextMemoryCard() {
+    const verses = getMemoryVerses();
+    if (!verses.length) return;
+    let next = state.activeMemoryIndex + 1;
+    if (next >= verses.length) next = 0;
+    state.isCardFlipped = false;
+    renderMemoryCard(next);
+  }
+
+  function shuffleMemoryCard() {
+    const verses = getMemoryVerses();
+    if (verses.length <= 1) return;
+    let r = Math.floor(Math.random() * verses.length);
+    if (r === state.activeMemoryIndex) {
+      r = (r + 1) % verses.length;
+    }
+    state.isCardFlipped = false;
+    renderMemoryCard(r);
+    showToast(`隨機抽考：第 ${verses[r].id} 週經文！`, 'fa-shuffle');
+  }
+
+  function toggleMemoryMask() {
+    state.isMemoryMasked = !state.isMemoryMasked;
+    if (DOM.memoryToggleMaskBtn) {
+      DOM.memoryToggleMaskBtn.classList.toggle('active', state.isMemoryMasked);
+    }
+    if (DOM.memoryMaskBtnText) {
+      DOM.memoryMaskBtnText.textContent = state.isMemoryMasked ? '顯示完整經文' : '挖空背誦模式';
+    }
+    if (state.isMemoryMasked && !state.isCardFlipped) {
+      state.isCardFlipped = true;
+    }
+    renderMemoryCard(state.activeMemoryIndex);
+    showToast(state.isMemoryMasked ? '已啟用填空挖空挑戰模式' : '已恢復完整經文顯示', 'fa-pen-clip');
+  }
+
+  function toggleCardMastered() {
+    const verses = getMemoryVerses();
+    const verse = verses[state.activeMemoryIndex];
+    if (!verse) return;
+
+    if (state.masteredVerses.has(verse.id)) {
+      state.masteredVerses.delete(verse.id);
+      showToast(`第 ${verse.id} 週經文已取消熟記標記`, 'fa-circle-info');
+    } else {
+      state.masteredVerses.add(verse.id);
+      showToast(`🎉 第 ${verse.id} 週經文已成功熟記！`, 'fa-circle-check');
+    }
+
+    safeStorage('set', 'blesseq_mastered_verses', JSON.stringify([...state.masteredVerses]));
+    renderMemoryCard(state.activeMemoryIndex);
+    renderMemoryNavPills();
+    updateMemoryMasteryBadge();
+    renderToolkitMemoryGrid();
+    if (state.isNotesOpen && state.activeNotesTab === 'memoryCards') {
+      renderNotesContent('memoryCards');
+    }
+  }
+
+  function updateMemoryMasteryBadge() {
+    if (DOM.memoryMasteredBadge) {
+      DOM.memoryMasteredBadge.textContent = `熟記 ${state.masteredVerses.size} / 12`;
+    }
+  }
+
+  function speakMemoryVerse() {
+    const verses = getMemoryVerses();
+    const verse = verses[state.activeMemoryIndex];
+    if (!verse || !('speechSynthesis' in window)) {
+      showToast('您的瀏覽器不支援語音合成朗讀');
+      return;
+    }
+
+    if (state.isSpeakingVerse) {
+      stopSpeakingVerse();
+      return;
+    }
+
+    stopSpeakingVerse();
+    const textToSpeak = `${verse.citation}。${verse.text}`;
+    const utter = new SpeechSynthesisUtterance(textToSpeak);
+    utter.lang = 'zh-TW';
+    utter.rate = 0.9;
+
+    state.isSpeakingVerse = true;
+    if (DOM.memoryAudioIcon) DOM.memoryAudioIcon.className = 'fa-solid fa-circle-stop text-gold';
+    if (DOM.memoryAudioText) DOM.memoryAudioText.textContent = '停止朗誦';
+
+    utter.onend = () => stopSpeakingVerse();
+    utter.onerror = () => stopSpeakingVerse();
+    window.speechSynthesis.speak(utter);
+  }
+
+  function stopSpeakingVerse() {
+    if ('speechSynthesis' in window && state.isSpeakingVerse) {
+      window.speechSynthesis.cancel();
+    }
+    state.isSpeakingVerse = false;
+    if (DOM.memoryAudioIcon) DOM.memoryAudioIcon.className = 'fa-solid fa-volume-high text-gold';
+    if (DOM.memoryAudioText) DOM.memoryAudioText.textContent = '語音朗誦';
+  }
+
+  function copyCurrentMemoryVerse() {
+    const verses = getMemoryVerses();
+    const verse = verses[state.activeMemoryIndex];
+    if (!verse) return;
+    const content = `【第 ${verse.id} 週主題經文 · ${verse.lessonTitle}】\n${verse.citation}\n${verse.text}\n\n💡 門下核心心法：${verse.insight}`;
+    safeCopy(content, '第 ' + verse.id + ' 週經文與心法已成功複製！');
+  }
+
+  function jumpToLessonFromCard() {
+    const verses = getMemoryVerses();
+    const verse = verses[state.activeMemoryIndex];
+    if (!verse) return;
+    closeMemoryCards();
+    loadLesson(verse.lessonId, 1);
+    showToast(`已跳轉至第 ${verse.id} 課：${verse.lessonTitle}`);
+  }
+
+  function renderToolkitMemoryGrid() {
+    if (!DOM.toolkitMemoryGrid) return;
+    const verses = getMemoryVerses();
+    if (!verses.length) return;
+
+    DOM.toolkitMemoryGrid.innerHTML = verses.map((v, i) => {
+      const isMastered = state.masteredVerses.has(v.id);
+      return `
+        <div class="toolkit-memory-card-tile ${isMastered ? 'is-mastered' : ''}" data-idx="${i}" role="button" tabindex="0" title="點擊開啟第 ${v.id} 週記憶卡">
+          <div class="toolkit-tile-header">
+            <span class="toolkit-tile-week">第 ${v.id} 週 · 主題經文</span>
+            ${isMastered ? '<span class="brand-badge text-olive" style="font-size:0.72rem;"><i class="fa-solid fa-check"></i> 已熟記</span>' : ''}
+          </div>
+          <div class="toolkit-tile-citation">${escapeHtml(v.citation)}</div>
+          <div class="toolkit-tile-snippet">${escapeHtml(v.text)}</div>
+          <div class="toolkit-tile-footer">
+            <span><i class="fa-regular fa-bookmark"></i> ${escapeHtml(v.lessonTitle)}</span>
+            <span class="text-gold"><i class="fa-solid fa-rotate"></i> 翻轉記憶卡 →</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    DOM.toolkitMemoryGrid.querySelectorAll('.toolkit-memory-card-tile').forEach(tile => {
+      tile.addEventListener('click', () => {
+        const idx = parseInt(tile.dataset.idx, 10);
+        closeToolkit();
+        openMemoryCards(idx);
+      });
+      tile.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          const idx = parseInt(tile.dataset.idx, 10);
+          closeToolkit();
+          openMemoryCards(idx);
+        }
+      });
+    });
   }
 
   // ─────────────────────────────────────────────
@@ -2105,12 +2584,13 @@
     DOM.closeToolkitModalBtn.addEventListener('click', closeToolkit);
     DOM.toolkitModal.addEventListener('click', e => { if (e.target === DOM.toolkitModal) closeToolkit(); });
 
-    // Toolkit Tabs (V4: 3-Tab Blessed Church Toolkit)
+    // Toolkit Tabs (V4: 4-Tab Blessed Church Toolkit)
     function switchToolkitTab(tab) {
       const tabs = [
         { btn: DOM.toolTabTestimony, panel: DOM.testimonyToolContent, id: 'testimony' },
         { btn: DOM.toolTabBest, panel: DOM.bestToolContent, id: 'best' },
-        { btn: DOM.toolTab8Weeks, panel: DOM.eightWeeksToolContent, id: '8weeks' }
+        { btn: DOM.toolTab8Weeks, panel: DOM.eightWeeksToolContent, id: '8weeks' },
+        { btn: DOM.toolTabScriptures, panel: DOM.scripturesToolContent, id: 'scriptures' }
       ];
       tabs.forEach(t => {
         if (t.btn && t.panel) {
@@ -2118,6 +2598,7 @@
           t.btn.classList.toggle('active', isActive);
           t.btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
           t.panel.hidden = !isActive;
+          t.panel.style.display = isActive ? 'block' : 'none';
         }
       });
     }
@@ -2126,6 +2607,12 @@
     DOM.toolTabBest.addEventListener('click', () => switchToolkitTab('best'));
     if (DOM.toolTab8Weeks) {
       DOM.toolTab8Weeks.addEventListener('click', () => switchToolkitTab('8weeks'));
+    }
+    if (DOM.toolTabScriptures) {
+      DOM.toolTabScriptures.addEventListener('click', () => {
+        switchToolkitTab('scriptures');
+        renderToolkitMemoryGrid();
+      });
     }
 
     // Copy Testimony (P0-7 safe clipboard)
@@ -2174,6 +2661,52 @@
       });
     }
 
+    // Memory Cards (經文記憶卡 01-12)
+    if (DOM.openMemoryCardsBtn) {
+      DOM.openMemoryCardsBtn.addEventListener('click', () => openMemoryCards());
+    }
+    if (DOM.closeMemoryCardsBtn) {
+      DOM.closeMemoryCardsBtn.addEventListener('click', closeMemoryCards);
+    }
+    if (DOM.memoryCardsModal) {
+      DOM.memoryCardsModal.addEventListener('click', e => {
+        if (e.target === DOM.memoryCardsModal) closeMemoryCards();
+      });
+    }
+    if (DOM.flashcardScene) {
+      DOM.flashcardScene.addEventListener('click', e => {
+        if (e.target.closest('button') || e.target.closest('.card-blank-word')) return;
+        flipMemoryCard();
+      });
+    }
+    if (DOM.memoryFlipActionBtn) {
+      DOM.memoryFlipActionBtn.addEventListener('click', flipMemoryCard);
+    }
+    if (DOM.memoryToggleMaskBtn) {
+      DOM.memoryToggleMaskBtn.addEventListener('click', toggleMemoryMask);
+    }
+    if (DOM.memoryAudioBtn) {
+      DOM.memoryAudioBtn.addEventListener('click', speakMemoryVerse);
+    }
+    if (DOM.memoryShuffleBtn) {
+      DOM.memoryShuffleBtn.addEventListener('click', shuffleMemoryCard);
+    }
+    if (DOM.memoryPrevCardBtn) {
+      DOM.memoryPrevCardBtn.addEventListener('click', prevMemoryCard);
+    }
+    if (DOM.memoryNextCardBtn) {
+      DOM.memoryNextCardBtn.addEventListener('click', nextMemoryCard);
+    }
+    if (DOM.memoryToggleMasteredBtn) {
+      DOM.memoryToggleMasteredBtn.addEventListener('click', toggleCardMastered);
+    }
+    if (DOM.cardCopyBtn) {
+      DOM.cardCopyBtn.addEventListener('click', copyCurrentMemoryVerse);
+    }
+    if (DOM.cardJumpLessonBtn) {
+      DOM.cardJumpLessonBtn.addEventListener('click', jumpToLessonFromCard);
+    }
+
     // Swipe Gestures (P1-13)
     addSwipe(DOM.slideStageMain);
     addSwipe(document.getElementById('presenterBody'));
@@ -2185,9 +2718,33 @@
         if (e.key === 'Escape') {
           if (DOM.searchModal && DOM.searchModal.style.display !== 'none') closeSearch();
           if (DOM.toolkitModal && DOM.toolkitModal.style.display !== 'none') closeToolkit();
+          if (DOM.memoryCardsModal && DOM.memoryCardsModal.style.display !== 'none') closeMemoryCards();
           if (state.isSettingsOpen) closeReadingSettings();
         }
         return;
+      }
+
+      // Memory Cards Active Shortcuts
+      if (state.isMemoryCardsOpen) {
+        if (e.key === 'Escape') {
+          closeMemoryCards();
+          return;
+        }
+        if (e.key === ' ' || e.code === 'Space') {
+          e.preventDefault();
+          flipMemoryCard();
+          return;
+        }
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          prevMemoryCard();
+          return;
+        }
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          nextMemoryCard();
+          return;
+        }
       }
 
       switch (e.key) {
@@ -2212,7 +2769,13 @@
           if (!e.ctrlKey && !e.metaKey) toggleGridView();
           break;
         case 'm': case 'M':
-          if (!e.ctrlKey && !e.metaKey) toggleMask();
+          if (!e.ctrlKey && !e.metaKey) {
+            if (state.isMemoryCardsOpen) {
+              toggleMemoryMask();
+            } else {
+              openMemoryCards();
+            }
+          }
           break;
         case 'a': case 'A':
           if (!e.ctrlKey && !e.metaKey) {
@@ -2220,6 +2783,7 @@
           }
           break;
         case 'Escape':
+          if (state.isMemoryCardsOpen) closeMemoryCards();
           if (state.isPresenterOpen) closePresenter();
           if (state.isSettingsOpen) closeReadingSettings();
           if (state.isDrawerOpen) closeMobileDrawer();

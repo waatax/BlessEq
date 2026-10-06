@@ -3048,8 +3048,422 @@ kbd.kbd-shortcut {
   pointer-events: auto;
 }
 
-.biblia-toast i {
+/* ===== SCRIPTURE MEMORY CARDS (經文記憶卡 01-12) ===== */
+.memory-cards-modal-content {
+  max-width: 860px;
+  width: 95%;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+}
+
+.memory-cards-body {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  max-height: calc(88vh - 70px);
+  overflow-y: auto;
+}
+
+.memory-progress-badge {
+  font-size: 0.82rem;
+  padding: 0.2rem 0.65rem;
+  background: var(--gold-light);
   color: var(--gold-primary);
+  border: 1px solid var(--gold-border);
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  margin-left: 0.5rem;
+}
+
+/* Nav Pills (Weeks 01 - 12) */
+.memory-card-nav-pills {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+  scrollbar-width: thin;
+}
+
+.memory-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-parchment);
+  background: var(--bg-surface-subtle);
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition);
+  user-select: none;
+}
+
+.memory-pill-btn:hover {
+  border-color: var(--gold-primary);
+  color: var(--gold-primary);
+  transform: translateY(-1px);
+}
+
+.memory-pill-btn.active {
+  background: var(--gold-primary) !important;
+  color: #FFFFFF !important;
+  border-color: var(--gold-primary) !important;
+  box-shadow: 0 2px 8px var(--gold-glow);
+}
+
+.memory-pill-btn.is-mastered::after {
+  content: '✓';
+  display: inline-block;
+  font-size: 0.75rem;
+  margin-left: 0.2rem;
+  color: #2e7d32;
+  font-weight: 800;
+}
+
+.memory-pill-btn.active.is-mastered::after {
+  color: #FFFFFF;
+}
+
+/* Toolbar */
+.memory-card-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-parchment);
+}
+
+.memory-current-lesson-label {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.memory-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+/* 3D Flashcard Flip Scene */
+.flashcard-scene {
+  perspective: 1200px;
+  width: 100%;
+  min-height: 380px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.flashcard-card {
+  width: 100%;
+  min-height: 380px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: var(--radius-lg);
+}
+
+.flashcard-card.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.flashcard-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--gold-border);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.6rem 2rem;
+  box-sizing: border-box;
+}
+
+.card-inner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.card-week-badge, .card-citation-badge {
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: var(--gold-light);
+  color: var(--gold-primary);
+  border: 1px solid var(--gold-border);
+  letter-spacing: 0.03em;
+}
+
+.card-hint-badge {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Front Face */
+.flashcard-front {
+  background: linear-gradient(145deg, var(--bg-surface) 0%, var(--bg-parchment-warm) 100%);
+  text-align: center;
+}
+
+.card-front-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 0.5rem;
+}
+
+.card-decor-icon {
+  font-size: 3.2rem;
+  color: var(--gold-primary);
+  margin-bottom: 0.85rem;
+  opacity: 0.9;
+  filter: drop-shadow(0 4px 6px rgba(197, 147, 37, 0.2));
+}
+
+.card-citation-title {
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--gold-primary);
+  margin: 0;
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.card-topic-subtitle {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0.4rem 0 0 0;
+}
+
+.card-front-tags {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.card-tag {
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface-subtle);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-parchment);
+}
+
+.card-front-footer, .card-back-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0.5rem;
+}
+
+.card-flip-prompt {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Back Face */
+.flashcard-back {
+  background: var(--bg-surface);
+  transform: rotateY(180deg);
+  text-align: left;
+}
+
+.card-back-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  padding: 0.5rem 0;
+}
+
+.card-scripture-quote {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  line-height: 1.85;
+  color: var(--text-primary);
+  background: var(--bg-parchment-warm);
+  border-left: 4px solid var(--gold-primary);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 1.1rem 1.4rem;
+  margin: 0.5rem 0;
+  font-weight: 500;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);
+}
+
+/* Recitation Blank Word */
+.card-blank-word {
+  display: inline-block;
+  min-width: 3.2rem;
+  margin: 0 0.2rem;
+  padding: 0 0.4rem;
+  border-bottom: 2.5px dashed var(--gold-primary);
+  background: var(--gold-light);
+  color: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  vertical-align: baseline;
+}
+
+.card-blank-word:hover {
+  background: #f7e6b8;
+  border-bottom-color: var(--crimson-primary);
+}
+
+.card-blank-word.revealed {
+  color: var(--crimson-primary) !important;
+  background: rgba(140, 34, 52, 0.08) !important;
+  border-bottom-style: solid;
+  border-bottom-color: var(--crimson-primary);
+  font-weight: 700;
+}
+
+.card-insight-box {
+  padding: 0.75rem 1rem;
+  background: var(--bg-surface-subtle);
+  border-radius: var(--radius-md);
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-top: 0.5rem;
+  border: 1px dashed var(--border-parchment);
+}
+
+.card-back-footer {
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Footer Controls */
+.memory-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-parchment);
+  flex-wrap: wrap;
+}
+
+.memory-mastery-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.memory-mastery-btn.is-mastered {
+  background: var(--olive-light) !important;
+  color: var(--olive-primary) !important;
+  border-color: var(--olive-primary) !important;
+  font-weight: 700;
+}
+
+/* Toolkit Scriptures Tab Grid */
+.toolkit-memory-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 0.85rem;
+}
+
+.toolkit-memory-card-tile {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-parchment);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.15rem;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  position: relative;
+}
+
+.toolkit-memory-card-tile:hover {
+  border-color: var(--gold-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.toolkit-memory-card-tile.is-mastered {
+  border-left: 4px solid var(--olive-primary);
+}
+
+.toolkit-tile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toolkit-tile-week {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--gold-primary);
+}
+
+.toolkit-tile-citation {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+}
+
+.toolkit-tile-snippet {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.toolkit-tile-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--border-parchment-subtle);
+  font-size: 0.78rem;
+  color: var(--text-muted);
 }
 
 /* ===== RESPONSIVE: 1200px ===== */
@@ -3163,6 +3577,15 @@ kbd.kbd-shortcut {
   .dual-pane-container { gap: 1rem; }
   .best-tools-grid { grid-template-columns: 1fr; }
   .theme-select-grid { grid-template-columns: repeat(2, 1fr); }
+  .flashcard-scene, .flashcard-card { min-height: 360px; }
+  .flashcard-face { padding: 1.25rem 1.2rem; }
+  .card-citation-title { font-size: 1.45rem; }
+  .card-topic-subtitle { font-size: 1.12rem; }
+  .card-scripture-quote { font-size: 1.15rem; padding: 0.85rem 1rem; }
+  .memory-card-footer { justify-content: center; }
+  .memory-card-footer .memory-nav-btn { flex: 1; }
+  .memory-mastery-controls { width: 100%; justify-content: space-between; order: -1; }
+  .memory-mastery-controls button { flex: 1; }
 }
 
 /* ===== RESPONSIVE: 480px (Mobile Portrait) ===== */
