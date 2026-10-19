@@ -66,10 +66,10 @@
           <span class="btn-text">實作工具</span>
         </button>
 
-        <!-- Presenter Fullscreen Mode Trigger -->
-        <button class="btn-primary" id="startPresenterBtn" type="button" aria-label="進入講員全螢幕投影演講模式，快捷鍵 F" title="進入講員全螢幕投影演講模式 (F)">
-          <i class="fa-solid fa-desktop" aria-hidden="true"></i>
-          <span class="btn-text">講員投影</span>
+        <!-- Fullscreen Slideshow Mode Trigger -->
+        <button class="btn-primary" id="startPresenterBtn" type="button" aria-label="全螢幕播放投影片，快捷鍵 F" title="全螢幕播放投影片 (快捷鍵: F)">
+          <i class="fa-solid fa-expand" aria-hidden="true"></i>
+          <span class="btn-text">全螢幕播放</span>
         </button>
 
         <!-- Mask Blanks Toggle -->
@@ -223,7 +223,7 @@
               <button class="btn-icon" id="btnSlideNext" type="button" aria-label="下一張投影片，快捷鍵右方向鍵" title="下一張 (→ 鍵)">
                 <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
               </button>
-              <button class="btn-icon" id="btnSlideFullscreen" type="button" aria-label="進入全螢幕講員投影模式，快捷鍵 F" title="全螢幕投影展示 (F 鍵)">
+              <button class="btn-icon" id="btnSlideFullscreen" type="button" aria-label="全螢幕播放投影片，快捷鍵 F" title="全螢幕播放 (快捷鍵: F)">
                 <i class="fa-solid fa-expand" aria-hidden="true"></i>
               </button>
             </div>
@@ -356,41 +356,58 @@
 
   </div>
 
-  <!-- Presenter Fullscreen Overlay Modal -->
-  <div class="presenter-modal" id="presenterModal"
+  <!-- True Fullscreen Slide Presentation View -->
+  <div class="presenter-modal fullscreen-slideshow-modal" id="presenterModal"
        role="dialog" aria-modal="true"
-       aria-labelledby="presenterLessonTitle"
+       aria-label="投影片全螢幕播放"
        style="display:none;">
-    <div class="presenter-topbar">
+    
+    <!-- Edge-to-Edge Pure Slide Display (100vw x 100vh) -->
+    <div class="presenter-body fullscreen-slide-body" id="presenterBody" title="點擊右側下一張、左側上一張 (或使用方向鍵、空白鍵)">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"
+           alt="投影片全螢幕播放" class="presenter-img fullscreen-slide-img" id="presenterImg">
+      <!-- Click zones for touch & mouse -->
+      <div class="fullscreen-click-zone zone-prev" id="fullscreenClickPrev" title="點擊上一張 (←)"></div>
+      <div class="fullscreen-click-zone zone-next" id="fullscreenClickNext" title="點擊下一張 (→)"></div>
+    </div>
+
+    <!-- Floating Auto-Hiding Top HUD -->
+    <div class="presenter-topbar fullscreen-hud-top" id="presenterTopBar">
       <div class="presenter-topbar-left">
-        <span class="brand-badge">講員投影模式</span>
+        <span class="fullscreen-live-badge"><i class="fa-solid fa-play"></i> 全螢幕播放</span>
         <strong id="presenterLessonTitle" class="presenter-lesson-title">為主作榮耀的見證</strong>
+        <span class="fullscreen-slide-counter-badge" id="presenterSlideIndicator">1 / 36</span>
       </div>
       <div class="presenter-topbar-right">
-        <!-- Presenter Timer -->
-        <div class="presenter-timer" id="presenterTimer" aria-label="講員計時器" aria-live="polite">
-          <i class="fa-regular fa-clock" aria-hidden="true"></i>
+        <!-- Hidden timer element kept for JS backward-compatibility -->
+        <div class="presenter-timer" id="presenterTimer" style="display:none;" aria-hidden="true">
           <span id="presenterTimerDisplay">00:00</span>
-          <button class="presenter-timer-btn" id="presenterTimerToggle" type="button" aria-label="啟動或暫停計時器">
-            <i class="fa-solid fa-play" id="presenterTimerIcon" aria-hidden="true"></i>
-          </button>
+          <button id="presenterTimerToggle" type="button"><i id="presenterTimerIcon"></i></button>
         </div>
-        <span class="presenter-slide-indicator" id="presenterSlideIndicator" aria-label="投影片進度">1 / 36</span>
-        <button class="btn-icon presenter-close-btn" id="closePresenterBtn" type="button" aria-label="退出演講模式，快捷鍵 ESC" title="退出演講模式 (ESC)">
-          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        <button class="fullscreen-exit-btn" id="closePresenterBtn" type="button" aria-label="退出全螢幕播放，快捷鍵 ESC" title="退出全螢幕 (ESC)">
+          <i class="fa-solid fa-compress" aria-hidden="true"></i>
+          <span>退出全螢幕</span>
+          <kbd>ESC</kbd>
         </button>
       </div>
     </div>
-    <div class="presenter-body" id="presenterBody">
-      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"
-           alt="講員投影片" class="presenter-img" id="presenterImg">
-    </div>
-    <div class="presenter-controls">
-      <button class="btn-secondary presenter-nav-btn" id="presenterPrevBtn" type="button" aria-label="上一張投影片，快捷鍵左方向鍵">
-        <i class="fa-solid fa-chevron-left" aria-hidden="true"></i> 上一張 (←)
+
+    <!-- Floating Auto-Hiding Side Navigation Arrows -->
+    <button class="fullscreen-side-nav-btn nav-prev" id="fullscreenSidePrevBtn" type="button" aria-label="上一張投影片 (←)" title="上一張 (← 鍵)">
+      <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+    </button>
+    <button class="fullscreen-side-nav-btn nav-next" id="fullscreenSideNextBtn" type="button" aria-label="下一張投影片 (→ 或 空白鍵)" title="下一張 (→ 鍵 或 空白鍵)">
+      <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+    </button>
+
+    <!-- Floating Auto-Hiding Bottom Control Pill -->
+    <div class="presenter-controls fullscreen-hud-bottom" id="presenterControls">
+      <button class="btn-secondary stepper-btn fullscreen-ctrl-btn" id="presenterPrevBtn" type="button" aria-label="上一張投影片 (←)">
+        <i class="fa-solid fa-chevron-left" aria-hidden="true"></i> 上一張
       </button>
-      <button class="btn-primary presenter-nav-btn" id="presenterNextBtn" type="button" aria-label="下一張投影片，快捷鍵右方向鍵或空白鍵">
-        下一張 (→ 或 空白鍵) <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+      <span class="fullscreen-bottom-indicator" id="presenterBottomIndicator">1 / 36</span>
+      <button class="btn-primary stepper-btn fullscreen-ctrl-btn" id="presenterNextBtn" type="button" aria-label="下一張投影片 (→ 或 空白鍵)">
+        下一張 <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
       </button>
     </div>
   </div>

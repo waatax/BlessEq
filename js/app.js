@@ -158,15 +158,20 @@
     notesSaveStatus: $('notesSaveStatus'),
     notesIndicatorBadge: $('notesIndicatorBadge'),
 
-    // Presenter
+    // Fullscreen Slideshow
     presenterModal: $('presenterModal'),
     presenterLessonTitle: $('presenterLessonTitle'),
     presenterSlideIndicator: $('presenterSlideIndicator'),
+    presenterBottomIndicator: $('presenterBottomIndicator'),
     presenterImg: $('presenterImg'),
     startPresenterBtn: $('startPresenterBtn'),
     closePresenterBtn: $('closePresenterBtn'),
     presenterPrevBtn: $('presenterPrevBtn'),
     presenterNextBtn: $('presenterNextBtn'),
+    fullscreenSidePrevBtn: $('fullscreenSidePrevBtn'),
+    fullscreenSideNextBtn: $('fullscreenSideNextBtn'),
+    fullscreenClickPrev: $('fullscreenClickPrev'),
+    fullscreenClickNext: $('fullscreenClickNext'),
     presenterTimerToggle: $('presenterTimerToggle'),
     presenterTimerDisplay: $('presenterTimerDisplay'),
     presenterTimerIcon: $('presenterTimerIcon'),
@@ -614,10 +619,13 @@
     // Update slide info pane (P1-11 fix)
     renderSlideInfo(slide);
 
-    // Update presenter if open
+    // Update presenter/fullscreen if open
     if (state.isPresenterOpen) {
       DOM.presenterImg.src = slide.image;
       DOM.presenterSlideIndicator.textContent = `${idx} / ${lesson.slideCount}`;
+      if (DOM.presenterBottomIndicator) {
+        DOM.presenterBottomIndicator.textContent = `${idx} / ${lesson.slideCount}`;
+      }
     }
 
     // Preload adjacent slides (P1-9)
@@ -1217,8 +1225,21 @@
   }
 
   // ─────────────────────────────────────────────
-  //  PRESENTER MODE (P3-7: with timer)
+  //  TRUE FULLSCREEN SLIDESHOW CONTROLLER (全螢幕投影片播放)
   // ─────────────────────────────────────────────
+  let _fullscreenIdleTimer = null;
+
+  function resetFullscreenIdle() {
+    if (!state.isPresenterOpen || !DOM.presenterModal) return;
+    DOM.presenterModal.classList.remove('is-idle');
+    clearTimeout(_fullscreenIdleTimer);
+    _fullscreenIdleTimer = setTimeout(() => {
+      if (state.isPresenterOpen && DOM.presenterModal) {
+        DOM.presenterModal.classList.add('is-idle');
+      }
+    }, 2500);
+  }
+
   function openPresenter() {
     state.isPresenterOpen = true;
     const lesson = state.lessons.find(l => l.id === state.activeLessonId);
@@ -1226,28 +1247,47 @@
     const slide = lesson.slides[state.activeSlideIndex - 1];
 
     DOM.presenterLessonTitle.textContent = `${lesson.code} ${lesson.title}`;
-    DOM.presenterSlideIndicator.textContent = `${state.activeSlideIndex} / ${lesson.slideCount}`;
+    const indicatorText = `${state.activeSlideIndex} / ${lesson.slideCount}`;
+    DOM.presenterSlideIndicator.textContent = indicatorText;
+    if (DOM.presenterBottomIndicator) {
+      DOM.presenterBottomIndicator.textContent = indicatorText;
+    }
     DOM.presenterImg.src = slide ? slide.image : '';
     DOM.presenterModal.style.display = 'flex';
     DOM.presenterModal.removeAttribute('hidden');
+    DOM.presenterModal.classList.remove('is-idle');
 
     // Focus management (P2-3)
-    DOM.closePresenterBtn.focus();
+    if (DOM.closePresenterBtn) DOM.closePresenterBtn.focus();
 
+    // Trigger Real Native Browser Fullscreen
     try {
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen();
+      const el = DOM.presenterModal;
+      const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen || document.documentElement.requestFullscreen;
+      if (req) {
+        req.call(el).catch(() => {});
       }
     } catch (e) { /* ignore */ }
+
+    resetFullscreenIdle();
   }
 
   function closePresenter() {
     state.isPresenterOpen = false;
-    DOM.presenterModal.style.display = 'none';
+    clearTimeout(_fullscreenIdleTimer);
+    if (DOM.presenterModal) {
+      DOM.presenterModal.style.display = 'none';
+      DOM.presenterModal.classList.remove('is-idle');
+    }
     stopPresenterTimer();
-    DOM.startPresenterBtn.focus();
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
+    if (DOM.startPresenterBtn) DOM.startPresenterBtn.focus();
+
+    // Exit browser native fullscreen if active
+    if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+      if (exit) {
+        exit.call(document).catch(() => {});
+      }
     }
   }
 
@@ -2538,13 +2578,69 @@
     // Grid View
     DOM.btnGridView.addEventListener('click', toggleGridView);
 
-    // Presenter
+    // True Fullscreen Slideshow (全螢幕投影片播放)
     DOM.startPresenterBtn.addEventListener('click', openPresenter);
     DOM.btnSlideFullscreen.addEventListener('click', openPresenter);
     DOM.closePresenterBtn.addEventListener('click', closePresenter);
-    DOM.presenterPrevBtn.addEventListener('click', () => setSlide(state.activeSlideIndex - 1, 'prev'));
-    DOM.presenterNextBtn.addEventListener('click', () => setSlide(state.activeSlideIndex + 1, 'next'));
-    DOM.presenterTimerToggle.addEventListener('click', togglePresenterTimer);
+    DOM.presenterPrevBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      resetFullscreenIdle();
+      setSlide(state.activeSlideIndex - 1, 'prev');
+    });
+    DOM.presenterNextBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      resetFullscreenIdle();
+      setSlide(state.activeSlideIndex + 1, 'next');
+    });
+
+    if (DOM.fullscreenSidePrevBtn) {
+      DOM.fullscreenSidePrevBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        resetFullscreenIdle();
+        setSlide(state.activeSlideIndex - 1, 'prev');
+      });
+    }
+    if (DOM.fullscreenSideNextBtn) {
+      DOM.fullscreenSideNextBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        resetFullscreenIdle();
+        setSlide(state.activeSlideIndex + 1, 'next');
+      });
+    }
+
+    if (DOM.fullscreenClickPrev) {
+      DOM.fullscreenClickPrev.addEventListener('click', e => {
+        e.stopPropagation();
+        resetFullscreenIdle();
+        setSlide(state.activeSlideIndex - 1, 'prev');
+      });
+    }
+    if (DOM.fullscreenClickNext) {
+      DOM.fullscreenClickNext.addEventListener('click', e => {
+        e.stopPropagation();
+        resetFullscreenIdle();
+        setSlide(state.activeSlideIndex + 1, 'next');
+      });
+    }
+
+    // Double-click on slide stage in main page opens fullscreen
+    DOM.slideStageMain.addEventListener('dblclick', () => {
+      openPresenter();
+    });
+
+    // Reset idle timer on mouse or touch interaction
+    DOM.presenterModal.addEventListener('mousemove', resetFullscreenIdle);
+    DOM.presenterModal.addEventListener('touchstart', resetFullscreenIdle, { passive: true });
+
+    // Sync native fullscreen changes with slideshow state
+    ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => {
+      document.addEventListener(evt, () => {
+        const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+        if (!isFs && state.isPresenterOpen) {
+          closePresenter();
+        }
+      });
+    });
 
     // Lesson Prev / Next
     DOM.btnPrevLesson.addEventListener('click', () => {
@@ -2747,6 +2843,44 @@
         }
       }
 
+      // Fullscreen Slideshow Active Keyboard Shortcuts
+      if (state.isPresenterOpen) {
+        resetFullscreenIdle();
+        switch (e.key) {
+          case 'ArrowRight':
+          case 'ArrowDown':
+          case 'PageDown':
+          case ' ':
+          case 'Enter':
+            e.preventDefault();
+            setSlide(state.activeSlideIndex + 1, 'next');
+            return;
+          case 'ArrowLeft':
+          case 'ArrowUp':
+          case 'PageUp':
+          case 'Backspace':
+            e.preventDefault();
+            setSlide(state.activeSlideIndex - 1, 'prev');
+            return;
+          case 'Home':
+            e.preventDefault();
+            setSlide(1, 'prev');
+            return;
+          case 'End': {
+            e.preventDefault();
+            const lesson = state.lessons.find(l => l.id === state.activeLessonId);
+            if (lesson) setSlide(lesson.slideCount, 'next');
+            return;
+          }
+          case 'Escape':
+          case 'f':
+          case 'F':
+            e.preventDefault();
+            closePresenter();
+            return;
+        }
+      }
+
       switch (e.key) {
         case 'ArrowLeft':
           setSlide(state.activeSlideIndex - 1, 'prev');
@@ -2755,14 +2889,10 @@
           setSlide(state.activeSlideIndex + 1, 'next');
           break;
         case ' ':
-          if (state.isPresenterOpen) {
-            e.preventDefault();
-            setSlide(state.activeSlideIndex + 1, 'next');
-          }
           break;
         case 'f': case 'F':
           if (!e.ctrlKey && !e.metaKey) {
-            state.isPresenterOpen ? closePresenter() : openPresenter();
+            openPresenter();
           }
           break;
         case 'g': case 'G':
