@@ -4,14 +4,16 @@
  * for the 20-lesson Blessed Discipleship Training Platform.
  */
 
-const CACHE_NAME = 'blesseq-v13-fullscreen-slides';
+const CACHE_NAME = 'blesseq-v14-complete-optimization';
 const CORE_ASSETS = [
   './',
   'index.html',
   'css/biblia.css',
   'js/app.js',
   'js/data.js',
-  'manifest.json'
+  'manifest.json',
+  'assets/icon-192.png',
+  'assets/icon-512.png'
 ];
 
 // Install Event: Pre-cache core shell

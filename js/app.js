@@ -640,11 +640,14 @@
     }
   }
 
+  const _preloadedImages = new Set();
   function preloadAdjacentSlides(lesson, idx) {
-    [idx + 1, idx + 2, idx - 1].forEach(i => {
+    if (!lesson || !lesson.slides) return;
+    [idx + 1, idx + 2, idx + 3, idx - 1].forEach(i => {
       if (i >= 1 && i <= lesson.slideCount) {
         const s = lesson.slides[i - 1];
-        if (s && s.image) {
+        if (s && s.image && !_preloadedImages.has(s.image)) {
+          _preloadedImages.add(s.image);
           const img = new Image();
           img.src = s.image;
         }
@@ -2420,19 +2423,32 @@
   // ─────────────────────────────────────────────
   //  TOUCH SWIPE GESTURES (P1-13)
   // ─────────────────────────────────────────────
-  function addSwipe(el) {
+  function addSwipe(el, onSwipeLeft, onSwipeRight) {
+    if (!el) return;
     let startX = 0;
     let startY = 0;
+    let startTime = 0;
     el.addEventListener('touchstart', e => {
-      startX = e.changedTouches[0].screenX;
-      startY = e.changedTouches[0].screenY;
+      if (e.changedTouches && e.changedTouches[0]) {
+        startX = e.changedTouches[0].screenX;
+        startY = e.changedTouches[0].screenY;
+        startTime = Date.now();
+      }
     }, { passive: true });
     el.addEventListener('touchend', e => {
+      if (!e.changedTouches || !e.changedTouches[0]) return;
       const dx = e.changedTouches[0].screenX - startX;
       const dy = e.changedTouches[0].screenY - startY;
-      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-        if (dx < 0) setSlide(state.activeSlideIndex + 1, 'next');
-        else setSlide(state.activeSlideIndex - 1, 'prev');
+      const dt = Date.now() - startTime;
+      if (dt < 600 && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 35) {
+        el._lastSwipeTime = Date.now();
+        if (dx < 0) {
+          if (typeof onSwipeLeft === 'function') onSwipeLeft();
+          else setSlide(state.activeSlideIndex + 1, 'next');
+        } else {
+          if (typeof onSwipeRight === 'function') onSwipeRight();
+          else setSlide(state.activeSlideIndex - 1, 'prev');
+        }
       }
     }, { passive: true });
   }
@@ -2771,6 +2787,7 @@
     }
     if (DOM.flashcardScene) {
       DOM.flashcardScene.addEventListener('click', e => {
+        if (Date.now() - (DOM.flashcardScene._lastSwipeTime || 0) < 350) return;
         if (e.target.closest('button') || e.target.closest('.card-blank-word')) return;
         flipMemoryCard();
       });
@@ -2806,6 +2823,9 @@
     // Swipe Gestures (P1-13)
     addSwipe(DOM.slideStageMain);
     addSwipe(document.getElementById('presenterBody'));
+    if (DOM.flashcardScene) {
+      addSwipe(DOM.flashcardScene, () => nextMemoryCard(), () => prevMemoryCard());
+    }
 
     // Keyboard Shortcuts
     document.addEventListener('keydown', e => {

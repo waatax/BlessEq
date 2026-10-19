@@ -1542,11 +1542,13 @@ kbd.kbd-shortcut {
   background: var(--bg-surface);
   border: 1px solid var(--border-parchment);
   border-radius: var(--radius-md);
-  padding: 0.85rem 1.1rem;
-  max-height: 220px;
-  min-height: 120px;
+  padding: 0.95rem 1.15rem;
+  max-height: 420px;
+  min-height: 140px;
   overflow-y: auto;
   scrollbar-width: thin;
+  scroll-behavior: smooth;
+  transition: all 0.25s ease;
 }
 
 .notes-section-tag {
