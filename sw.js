@@ -4,7 +4,7 @@
  * for the 20-lesson Blessed Discipleship Training Platform.
  */
 
-const CACHE_NAME = 'blesseq-v14-complete-optimization';
+const CACHE_NAME = 'blesseq-v15-slide-fix';
 const CORE_ASSETS = [
   './',
   'index.html',
